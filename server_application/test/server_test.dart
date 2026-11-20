@@ -5,11 +5,10 @@ import 'package:openapi/api.dart';
 import 'package:test/test.dart';
 import 'package:test_process/test_process.dart';
 
-import '../bin/ai/mock_ai.dart';
 import '../bin/server.dart';
 
 void main() {
-  final port = '8080';
+  final port = '8081';
   final host = 'http://127.0.0.1:$port';
   late TestProcess process;
 
@@ -17,39 +16,34 @@ void main() {
     process = await TestProcess.start(
       'dart',
       ['run', 'bin/server.dart'],
-      environment: {
-        EnvVariables.port: port, 
-        EnvVariables.useMockAi: 'true',},
+      environment: {EnvVariables.port: port},
       forwardStdio: true,
     );
 
-    await expectLater(process.stdout, emitsThrough(startsWith('Server listening on port')));
+    await expectLater(
+        process.stdout, emitsThrough(startsWith('Server listening on port')));
   });
 
   tearDown(() async => await process.kill());
 
-  test('Root', () async {
+  test('root answers with the server name', () async {
     final response = await get(Uri.parse('$host/'));
+
     expect(response.statusCode, 200);
-    expect(response.body.startsWith('Chat Server'), true);
+    expect(response.body, 'Handball-Live-Statistik Server');
   });
 
-  test('404', () async {
+  test('unknown path answers 404', () async {
     final response = await get(Uri.parse('$host/doesnotexist'));
+
     expect(response.statusCode, 404);
   });
 
-  test('Chat', () async {
-    var message = Message(
-        timestamp: DateTime.now().toUtc(),
-        author: MessageAuthorEnum.user,
-        message: "whatever");
-    var body = json.encode(message.toJson());
-
-    final response = await post(Uri.parse('$host/chat'), body: body);
+  test('health answers status ok', () async {
+    final response = await get(Uri.parse('$host/health'));
 
     expect(response.statusCode, 200);
-    var answer = Message.fromJson(json.decode(response.body));
-    expect(answer?.message, MockAi.message);
+    final health = Health.fromJson(json.decode(response.body));
+    expect(health?.status, 'ok');
   });
 }

@@ -1,79 +1,56 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:openapi/api.dart';
 import 'package:provider/provider.dart';
 
+/// Placeholder start page: asks the server once whether it is running.
+///
+/// Example: the server answers GET /health with {"status": "ok"},
+/// so the page shows "Server erreichbar".
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.title});
-
-  final String title;
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  _HomePageState();
+  late final Future<bool> _serverIsUp;
 
-  String _userInput = "";
-  String _aiAnswer = "";
-
-  ChatApi? _api;
-
-  void _setAiAnswer(Message message) {
-    setState(() {
-      _aiAnswer = message.message ?? "<no message received>";
-    });
+  @override
+  void initState() {
+    super.initState();
+    _serverIsUp = _checkServer(context.read<HealthApi>());
   }
 
-  void _setUserInput(String input) {
-    _userInput = input;
-  }
-
-  void _askAI() async {
-    var message = Message(
-      timestamp: DateTime.now().toUtc(),
-      author: MessageAuthorEnum.user,
-      message: _userInput,
-    );
-
-    var response = await _api!.chat(message);
-
-    _setAiAnswer(response!);
+  static Future<bool> _checkServer(HealthApi api) async {
+    try {
+      final health = await api.getHealth();
+      return health?.status == 'ok';
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    _api = Provider.of<ChatApi>(context);
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: const Text('Handball-Live-Statistik'),
       ),
-      body: Column(
-        children: <Widget>[
-          TextField(
-            key: const Key('UserInputTextField'),
-            maxLines: 5,
-            decoration: const InputDecoration(
-              hintText: 'Enter text here',
-            ),
-            onChanged: (String value) {
-              _setUserInput(value);
-            },
-          ),
-          Expanded(
-            child: Text(
-              _aiAnswer,
-              key: const Key('AiAnswerText'),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Ask AI',
-        onPressed: _askAI,
-        child: const Icon(Icons.send),
+      body: Center(
+        child: FutureBuilder<bool>(
+          future: _serverIsUp,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const CircularProgressIndicator();
+            }
+            return Text(
+              snapshot.data! ? 'Server erreichbar' : 'Server nicht erreichbar',
+              key: const Key('ServerStatusText'),
+            );
+          },
+        ),
       ),
     );
   }

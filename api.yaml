@@ -1,52 +1,35 @@
 openapi: 3.0.0
 servers:
-  - url: 'http://chat.fhdw.de'
+  - url: 'http://localhost:8080'
 info:
   description: >-
-    Chat API.
-  version: 1.0.0
-  title: OpenAPI Chats
+    REST API of the Handball-Live-Statistik server.
+  version: 0.1.0
+  title: Handball-Live-Statistik API
 tags:
-  - name: chat
-    description: Everything about Chats
+  - name: health
+    description: Is the server up?
 paths:
-  /chat:
-    post:
+  /health:
+    get:
       tags:
-        - chat
-      summary: Get answer to the passed message
-      operationId: chat
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Message'
-        required: true
+        - health
+      summary: Tells whether the server is running
+      operationId: getHealth
       responses:
         '200':
-          description: successful operation
+          description: The server is running
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Message'
-        '405':
-          description: Invalid input
+                $ref: '#/components/schemas/Health'
 components:
   schemas:
-    Message:
-      title: Chat message
-      description: A message, with author and date
+    Health:
+      description: 'State of the server, for example status ok'
       type: object
+      required:
+        - status
       properties:
-        timestamp:
+        status:
           type: string
-          format: date-time
-        message:
-          type: string
-        author:
-          type: string
-          description: Author of the message
-          enum:
-            - user
-            - system
-            - ai

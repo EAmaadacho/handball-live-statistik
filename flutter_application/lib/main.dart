@@ -1,33 +1,34 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:openapi/api.dart';
 import 'package:provider/provider.dart';
+
 import 'home_page.dart';
 
-
+/// Address of the Dart server, see server_application/bin/server.dart.
+const serverUrl = 'http://127.0.0.1:8080';
 
 void main() {
-  var apiClient = ApiClient(basePath: 'http://127.0.0.1:8099');
-  var api = ChatApi(apiClient);
+  final api = HealthApi(ApiClient(basePath: serverUrl));
   runApp(
-    Provider<ChatApi>(
+    Provider<HealthApi>(
       create: (_) => api,
-      child: const AiApp(),
+      child: const HandballApp(),
     ),
   );
 }
 
-class AiApp extends StatelessWidget {
-  const AiApp({super.key});
+class HandballApp extends StatelessWidget {
+  const HandballApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Chat Demo',
+      title: 'Handball-Live-Statistik',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
       ),
-      home: const HomePage(title: 'Chat Demo Home Page'),
+      home: const HomePage(),
     );
   }
 }

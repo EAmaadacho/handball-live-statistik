@@ -1,27 +1,24 @@
-#!/bin/zsh
+#!/bin/bash
+# Generates the Dart API code from api.yaml (macOS/Linux and CI).
+# Usage: ./generate_code.sh   (once: chmod +x generate_code.sh)
+set -e
 
-# script file needs to be executable: chmod +x generate_code.sh
+GENERATOR_VERSION=7.12.0
+JAR=tools/openapi-generator-cli-$GENERATOR_VERSION.jar
 
-# Generate Dart code using openapi-generator
-java -jar tools/openapi-generator-cli-7.12.0.jar generate -g dart -i api.yaml -o openapi
+# Download the generator once; tools/ is not in the repo (the jar has 30 MB).
+if [ ! -f "$JAR" ]; then
+  mkdir -p tools
+  echo "Downloading OpenAPI Generator $GENERATOR_VERSION ..."
+  curl -fL -o "$JAR" "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/$GENERATOR_VERSION/openapi-generator-cli-$GENERATOR_VERSION.jar"
+fi
 
-# Navigate to the generated directory
-cd openapi
+# Generate Dart code from api.yaml into openapi/
+java -jar "$JAR" generate -g dart -i api.yaml -o openapi
 
-# Install dependencies for Dart project
-dart pub get
+(cd openapi && dart pub get)
 
-# Switch to the flutter application directory
-cd ../flutter_application
+# Client: fetch packages and generate the Mockito mocks for the tests
+(cd flutter_application && flutter pub get && dart run build_runner build --delete-conflicting-outputs)
 
-# Run build process for Flutter application
-dart run build_runner build --delete-conflicting-outputs
-
-# Switch to the server application directory
-cd ../server_application
-
-# Install dependencies for server application
-dart pub get
-
-# Move back to the project root directory (optional)
-cd ..
+(cd server_application && dart pub get)

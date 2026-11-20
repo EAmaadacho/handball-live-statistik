@@ -5,7 +5,7 @@
 
 ## Kontext
 
-Zuschauer wie Lisa sollen Spielstand, Uhr und Verlauf live sehen, ohne die Seite neu zu laden (L1). HTTP ist zustandslos: Der Server antwortet nur, wenn der Browser fragt, und kann von sich aus nichts schicken.
+Zuschauer wie Lisa sollen Spielstand, Uhr und Verlauf live sehen, ohne die Seite neu zu laden ([L1](../user-stories.md#l1)). HTTP ist zustandslos: Der Server antwortet nur, wenn der Browser fragt, und kann von sich aus nichts schicken.
 
 ## Entscheidung
 
@@ -23,5 +23,5 @@ Polling ist leichter umzusetzen als ein WebSocket. Außerdem ist der Kommunikati
 
 - Ein Tor erscheint bei Lisa nach höchstens etwa 1 Sekunde.
 - 30 Zuschauer erzeugen 30 Anfragen pro Sekunde, für den Server kein Problem.
-- Jede Änderung am Spiel erhöht die Versionsnummer. Die laufende Uhr ändert sie nicht, weil die Spielzeit berechnet wird (ADR-003).
+- Jede Änderung am Spiel erhöht die Versionsnummer. Die laufende Uhr ändert sie nicht, weil die Spielzeit berechnet wird ([ADR-003](003-spieluhr-auf-dem-server.md)).
 - Die Schnittstelle bleibt reines REST in `api.yaml`.

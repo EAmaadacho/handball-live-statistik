@@ -15,7 +15,7 @@ Wir trennen Live-Daten vom Archiv. Laufende Spiele liegen als Dart-Objekte im Ar
 |---|---|
 | `data/teams.json` | Teams mit Kader und Logo-Dateiname |
 | `data/games/<id>.json` | laufendes Spiel mit Kader-Kopie, Uhr und Ereignissen |
-| `data/logos/` | Logos als PNG oder JPG (T6) |
+| `data/logos/` | Logos als PNG oder JPG ([T6](../user-stories.md#t6)) |
 | `data/archive.db` | beendete Spiele (Tabellen `games`, `players`, `events`) |
 
 Beim Spielende schreibt der Server das Spiel in einer Transaktion in die Datenbank und löscht erst danach die JSON-Datei. Findet er beim Start ein beendetes Spiel als Datei, holt er diesen Schritt nach. JSON-Dateien werden über `<name>.tmp` und Umbenennen geschrieben, damit nie eine halbe Datei entsteht. Die Repositories in `storage/` übernehmen das, die Fachlogik weiß davon nichts.
@@ -33,6 +33,6 @@ Beim Spielende schreibt der Server das Spiel in einer Transaktion in die Datenba
 - Das Paket `sqlite3` bringt SQLite selbst mit, es ist nichts zu installieren.
 - Zwei Speicherarten, also zwei Repositories mit eigenen Tests.
 - Alte Spiele liegen nicht im Arbeitsspeicher, sondern werden bei Bedarf aus der Datenbank gelesen.
-- Saisonstatistiken (T5) lassen sich per SQL abfragen.
+- Saisonstatistiken ([T5](../user-stories.md#t5)) lassen sich per SQL abfragen.
 - Es darf nur ein Server gleichzeitig laufen.
 - `data/` kommt in `.gitignore`, damit keine Testdaten ins Repo geraten.

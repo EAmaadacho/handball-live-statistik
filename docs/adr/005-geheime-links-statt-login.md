@@ -5,7 +5,7 @@
 
 ## Kontext
 
-Nur die Teamverantwortliche darf ihr Team pflegen, nur der Ticker darf Ereignisse erfassen, zuschauen darf jeder (T1, E3, L1). HTTP ist zustandslos, deshalb muss jeder einzelne Request zeigen, dass er etwas darf.
+Nur die Teamverantwortliche darf ihr Team pflegen, nur der Ticker darf Ereignisse erfassen, zuschauen darf jeder ([T1](../user-stories.md#t1), [E3](../user-stories.md#e3), [L1](../user-stories.md#l1)). HTTP ist zustandslos, deshalb muss jeder einzelne Request zeigen, dass er etwas darf.
 
 ## Entscheidung
 
@@ -13,11 +13,11 @@ Rechte hängen an geheimen Links statt an Konten. Beim Anlegen eines Teams entst
 
 So braucht niemand ein Konto oder Passwort: Die Teamverantwortliche schickt den Ticker-Link einfach an den Co-Trainer weiter.
 
-Geht ein Team-Link verloren, gibt es keinen Admin, der ihn neu vergibt, weil das bei vielen Vereinen nicht skaliert. Stattdessen fordert das Team über seine hinterlegte E-Mail-Adresse einen neuen Team-Link an (T7, Kann). Der alte Link wird dabei ungültig.
+Geht ein Team-Link verloren, gibt es keinen Admin, der ihn neu vergibt, weil das bei vielen Vereinen nicht skaliert. Stattdessen fordert das Team über seine hinterlegte E-Mail-Adresse einen neuen Team-Link an ([T7](../user-stories.md#t7), Kann). Der alte Link wird dabei ungültig.
 
 ## Verworfene Alternativen
 
-- **Login mit Teamname und Passwort:** sicherer, aber mit Hash, Token und Login-Seite deutlich aufwendiger; bleibt als Kann-Story T3.
+- **Login mit Teamname und Passwort:** sicherer, aber mit Hash, Token und Login-Seite deutlich aufwendiger; bleibt als Kann-Story [T3](../user-stories.md#t3).
 - **Ein Admin vergibt verlorene Links neu:** skaliert nicht.
 - **Kein Schutz:** Jeder Zuschauer könnte Tore eintragen oder löschen.
 

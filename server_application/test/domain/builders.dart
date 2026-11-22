@@ -1,3 +1,6 @@
+import 'package:test/test.dart';
+import 'package:server_application/domain/rule_violation.dart';
+import 'package:server_application/domain/game_clock.dart';
 import 'package:server_application/domain/player.dart';
 import 'package:server_application/domain/team.dart';
 
@@ -41,3 +44,23 @@ Team anEmptyTeam() =>
 /// TV Mettmann with Max (7), Lisa (12) and Nora (1). Tom is not in it yet.
 Team mettmann() =>
     anEmptyTeam().addPlayer(max()).addPlayer(lisa()).addPlayer(nora());
+
+/// A fixed moment on game day: 22.11.2026, 15:00:00 plus [minutes] and [seconds].
+DateTime at(int minutes, [int seconds = 0]) => DateTime(2026, 11, 22, 15)
+    .add(Duration(minutes: minutes, seconds: seconds));
+
+/// A game time like "23:14", written as `time(23, 14)`.
+Duration time(int minutes, [int seconds = 0]) =>
+    Duration(minutes: minutes, seconds: seconds);
+
+/// A clock in the first half, started at 15:00:00 and running from 00:00.
+GameClock aRunningClock() => GameClock.initial().start(at(0));
+
+/// A clock in the second half, started at 15:00:00 and running from 30:00.
+GameClock aClockInTheSecondHalf() =>
+    aRunningClock().halfTime(at(30)).start(at(0));
+
+/// Expects a [RuleViolation] with exactly this German [message].
+Matcher throwsRuleViolation(String message) => throwsA(
+      isA<RuleViolation>().having((e) => e.message, 'message', message),
+    );

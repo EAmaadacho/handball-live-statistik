@@ -9,13 +9,17 @@ import 'format.dart';
 /// Example: TVM 14, HSG 12, "2. Halbzeit", 38:47, below HSG "8 1:22"
 /// because Nico (8) sits out a penalty.
 class Scoreboard extends StatelessWidget {
-  const Scoreboard({super.key, required this.state, this.onClockTap});
+  const Scoreboard(
+      {super.key, required this.state, this.onClockTap, this.large = false});
 
   final GameState state;
 
   /// Set on the ticker: tapping the clock starts or stops it (U1).
   /// Null on the live page, where the clock only shows the time.
   final VoidCallback? onClockTap;
+
+  /// Bigger digits for the web layout, where the board spans a wide screen.
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +33,14 @@ class Scoreboard extends StatelessWidget {
     return Container(
       key: const Key('Scoreboard'),
       color: colors.board,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      padding: large
+          ? const EdgeInsets.fromLTRB(32, 18, 32, 12)
+          : const EdgeInsets.fromLTRB(14, 12, 14, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _TeamColumn(state: state, side: Side.home)),
+          Expanded(
+              child: _TeamColumn(state: state, side: Side.home, large: large)),
           InkWell(
             onTap: state.ended ? null : onClockTap,
             child: Padding(
@@ -49,7 +56,7 @@ class Scoreboard extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: ledFontFamily,
                       fontWeight: FontWeight.w900,
-                      fontSize: 34,
+                      fontSize: large ? 54 : 34,
                       height: 1,
                       color: colors.onBoard,
                     ),
@@ -68,7 +75,8 @@ class Scoreboard extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(child: _TeamColumn(state: state, side: Side.away)),
+          Expanded(
+              child: _TeamColumn(state: state, side: Side.away, large: large)),
         ],
       ),
     );
@@ -76,10 +84,12 @@ class Scoreboard extends StatelessWidget {
 }
 
 class _TeamColumn extends StatelessWidget {
-  const _TeamColumn({required this.state, required this.side});
+  const _TeamColumn(
+      {required this.state, required this.side, this.large = false});
 
   final GameState state;
   final Side side;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +121,7 @@ class _TeamColumn extends StatelessWidget {
           style: TextStyle(
             fontFamily: ledFontFamily,
             fontWeight: FontWeight.w900,
-            fontSize: 46,
+            fontSize: large ? 72 : 46,
             height: 0.95,
             color: colors.ledScore,
           ),

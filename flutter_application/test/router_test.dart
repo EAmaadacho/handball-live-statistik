@@ -36,7 +36,7 @@ void main() {
 
   testWidgets('live link of game 17 opens the live page', (tester) async {
     await _open(tester, '/spiel/17/live');
-    expect(find.text('Live'), findsOneWidget);
+    expect(find.byKey(const Key('EventFeed')), findsOneWidget);
   });
 
   testWidgets('live link of a game that does not exist shows "Link ungültig"',

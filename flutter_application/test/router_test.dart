@@ -19,7 +19,7 @@ void main() {
   testWidgets('ticker link with the right code opens the ticker',
       (tester) async {
     await _open(tester, '/spiel/17/ticker/x9Fw3cNs7Ke2Hy5D');
-    expect(find.text('Ticker'), findsOneWidget);
+    expect(find.byKey(const Key('Scoreboard')), findsOneWidget);
   });
 
   testWidgets('T1_3 ticker link with a wrong code shows "Link ungültig"',

@@ -56,6 +56,17 @@ class DemoGameSource implements GameSource {
       Player(id: 'a5', number: 5, firstName: 'Jan', lastName: 'Becker'),
       Player(id: 'a8', number: 8, firstName: 'Nico', lastName: 'Hahn'),
       Player(id: 'a10', number: 10, firstName: 'Kai', lastName: 'Roth'),
+      Player(id: 'a6', number: 6, firstName: 'Timo', lastName: 'Brandt'),
+      Player(id: 'a14', number: 14, firstName: 'Ole', lastName: 'Fischer'),
+      Player(id: 'a19', number: 19, firstName: 'Leon', lastName: 'Kraus'),
+      Player(id: 'a2', number: 2, firstName: 'Tim', lastName: 'Lang'),
+      Player(id: 'a17', number: 17, firstName: 'Moritz', lastName: 'Klein'),
+      Player(
+          id: 'a12',
+          number: 12,
+          firstName: 'Felix',
+          lastName: 'Sommer',
+          isGoalkeeper: true),
     ],
     officials: [
       Official(letter: 'A', name: 'Holger Brück', role: 'Trainer'),
@@ -65,12 +76,42 @@ class DemoGameSource implements GameSource {
 
   static const game = Game(id: gameId, home: mettmann, away: hilden);
 
+  /// 38:47 in the second half, 14:12, Nico (8) sits out a penalty.
+  static const state = GameState(
+    game: game,
+    goals: {Side.home: 14, Side.away: 12},
+    clockSeconds: 38 * 60 + 47,
+    clockRunning: true,
+    timeouts: {Side.home: 1, Side.away: 2},
+    penalties: [Penalty(side: Side.away, label: '8', secondsLeft: 82)],
+    field: {
+      Side.home: [
+        'nora1',
+        'paul11',
+        'max7',
+        'lisa12',
+        'finn23',
+        'jonas4',
+        'ben5'
+      ],
+      Side.away: ['a1', 'a14', 'a6', 'a5', null, 'a10', 'a3'],
+    },
+    bench: {
+      Side.home: ['tom9', 'erik15', 'mia16'],
+      Side.away: ['a19', 'a2', 'a17', 'a12'],
+    },
+    cards: {'jonas4': CardMark.yellow, 'away:A': CardMark.yellow},
+  );
+
   @override
   Future<Game?> loadGame(int id) async => id == gameId ? game : null;
 
   @override
   Future<Team?> loadTeamByCode(String code) async =>
       code == teamCode ? mettmann : null;
+
+  @override
+  Future<GameState?> loadState(int id) async => id == gameId ? state : null;
 
   @override
   Future<bool> isTickerCode(int id, String code) async =>

@@ -1,13 +1,8 @@
 import 'package:server_application/domain/player.dart';
-import 'package:server_application/domain/rule_violation.dart';
 import 'package:server_application/domain/team.dart';
 import 'package:test/test.dart';
 
 import 'builders.dart';
-
-Matcher throwsRuleViolation(String message) => throwsA(
-      isA<RuleViolation>().having((e) => e.message, 'message', message),
-    );
 
 void main() {
   group('T1 create a team', () {

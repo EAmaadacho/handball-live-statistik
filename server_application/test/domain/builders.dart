@@ -68,20 +68,88 @@ Matcher throwsRuleViolation(String message) => throwsA(
       isA<RuleViolation>().having((e) => e.message, 'message', message),
     );
 
+Player _field(String name, int number, [String lastName = 'Schulz']) => aPlayer(
+    id: 'p-${name.toLowerCase()}',
+    number: number,
+    firstName: name,
+    lastName: lastName);
+
+Player _keeper(String name, int number, String lastName) => aPlayer(
+      id: 'p-${name.toLowerCase()}',
+      number: number,
+      firstName: name,
+      lastName: lastName,
+      position: Position.goalkeeper,
+    );
+
+/// Lea Neumann (No. 16), second goalkeeper of TV Mettmann, on the bench.
+Player lea() => _keeper('Lea', 16, 'Neumann');
+
 /// Jan Becker (No. 5) of HSG Hilden, the opponent without registration.
-Player jan() =>
-    aPlayer(id: 'p-jan', number: 5, firstName: 'Jan', lastName: 'Becker');
+Player jan() => _field('Jan', 5, 'Becker');
 
-/// HSG Hilden with a game squad of its own (S1.1).
-GameTeam hilden() =>
-    GameTeam(name: 'HSG Hilden', shortCode: 'HSG', squad: [jan()]);
+/// TV Mettmann for one game. Starting: Nora in goal; Max, Lisa, Ben, Paul,
+/// Finn, Leon in the field. Bench: Tom and goalkeeper Lea.
+GameTeam mettmannInGame() => GameTeam(
+      name: 'TV Mettmann',
+      shortCode: 'TVM',
+      squad: [
+        nora(),
+        max(),
+        lisa(),
+        _field('Ben', 2),
+        _field('Paul', 3),
+        _field('Finn', 4),
+        _field('Leon', 6),
+        tom(),
+        lea(),
+      ],
+    );
 
-/// TV Mettmann against HSG Hilden before kick-off.
-Game aGame() =>
-    Game.create(home: GameTeam.fromTeam(mettmann()), away: hilden());
+/// HSG Hilden with a game squad of its own (S1.1). Starting: Kai in goal;
+/// Jan, Ole, Tim, Nils, Erik, Moritz in the field. Bench: Lars.
+GameTeam hilden() => GameTeam(
+      name: 'HSG Hilden',
+      shortCode: 'HSG',
+      squad: [
+        _keeper('Kai', 1, 'Becker'),
+        jan(),
+        _field('Ole', 3, 'Becker'),
+        _field('Tim', 4, 'Becker'),
+        _field('Nils', 6, 'Becker'),
+        _field('Erik', 8, 'Becker'),
+        _field('Moritz', 10, 'Becker'),
+        _field('Lars', 11, 'Becker'),
+      ],
+    );
+
+const mettmannFieldPlayers = [
+  'p-max',
+  'p-lisa',
+  'p-ben',
+  'p-paul',
+  'p-finn',
+  'p-leon'
+];
+const hildenFieldPlayers = [
+  'p-jan',
+  'p-ole',
+  'p-tim',
+  'p-nils',
+  'p-erik',
+  'p-moritz'
+];
+
+/// TV Mettmann against HSG Hilden before kick-off, without lineups.
+Game aGame() => Game.create(home: mettmannInGame(), away: hilden());
+
+/// Both teams set up with their starting lineups, before kick-off.
+Game aGameWithLineups() => aGame()
+    .setLineup(Side.home, 'p-nora', mettmannFieldPlayers)
+    .setLineup(Side.away, 'p-kai', hildenFieldPlayers);
 
 /// TV Mettmann against HSG Hilden, kick-off at 15:00:00, clock running.
-Game aRunningGame() => aGame().startClock(at(0));
+Game aRunningGame() => aGameWithLineups().startClock(at(0));
 
 /// Adds [count] goals for [side] at 15:01:00, by Max (home) or Jan (away).
 Game withGoals(Game game, Side side, int count) {

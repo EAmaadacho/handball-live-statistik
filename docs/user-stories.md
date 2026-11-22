@@ -123,8 +123,8 @@ Verstöße lehnt der Server mit einer verständlichen Meldung ab (HTTP 409).
 - <a id="r4"></a>**R4 (Muss)** Ereignisse nur während des Spiels
   - <a id="r4-1"></a>R4.1 Vor dem Anpfiff werden keine Ereignisse angenommen.
   - <a id="r4-2"></a>R4.2 Nach Spielende werden keine Ereignisse mehr angenommen oder gelöscht.
-- <a id="r5"></a>**R5 (Muss)** Paraden und Gegentore kann nur ein Torwart haben. „Parade – Nr. 7 Max“ wird abgelehnt.
-- <a id="r7"></a>**R7 (Muss)** Auf dem Feld stehen höchstens 7 Spieler eines Teams, während einer Zeitstrafe oder nach Rot entsprechend weniger. Nur Spieler auf dem Feld können Ereignisse bekommen.
+- <a id="r5"></a>**R5 (Muss)** Paraden und Gegentore zählen nur für den Torwart im Tor. Ist das Tor leer, wird „Parade“ abgelehnt.
+- <a id="r7"></a>**R7 (Muss)** Auf dem Feld stehen höchstens 7 Spieler eines Teams, während einer Zeitstrafe oder nach Rot entsprechend weniger. Würfe (Tor, Fehlwurf, Parade, 7-Meter) und technische Fehler bekommen nur Spieler auf dem Feld, Gelb, 2 Minuten und Rot auch Spieler auf der Bank.
 - <a id="r6"></a>**R6 (Kann)** Hinweis bei Gelb: Hat Max schon Gelb oder hat Mettmann schon 3 Gelbe, zeigt der Ticker „Laut Regel sollte jetzt eine Zeitstrafe folgen“. Das ist nur ein Hinweis, keine Ablehnung, weil die Regel ein „sollte“ ist.
 
 Regelquellen: IHF-Regeln Hallenhandball ([R2](#r2): Regel 16:5/16:6; [R6](#r6): Kommentar zu Regel 16:1; [L3.3](#l3-3): Regel 16:8; [S1.4](#s1-4): Regel 4:1; [E6](#e6): Regel 4:2 und 16). [R1](#r1) mit 3 Auszeiten ist eine Durchführungsbestimmung der Verbände (DHB), nicht der IHF-Grundtext.

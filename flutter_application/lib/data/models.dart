@@ -85,6 +85,40 @@ class Penalty {
   final int secondsLeft;
 }
 
+/// What a player did in this game, counted by the server from the events (ADR-006).
+///
+/// Example: Max has 5 goals from 7 shots, both 7 m converted → goals 5,
+/// shots 7, sevenMeterGoals 2, sevenMeterShots 2.
+class PlayerStats {
+  const PlayerStats({
+    this.goals = 0,
+    this.shots = 0,
+    this.sevenMeterGoals = 0,
+    this.sevenMeterShots = 0,
+    this.saves = 0,
+    this.goalsAgainst = 0,
+    this.technicalFaults = 0,
+    this.yellowCards = 0,
+    this.twoMinutes = 0,
+    this.redCards = 0,
+  });
+
+  static const none = PlayerStats();
+
+  final int goals;
+  final int shots;
+  final int sevenMeterGoals;
+  final int sevenMeterShots;
+
+  /// Only goalkeepers have saves and goals against (R5).
+  final int saves;
+  final int goalsAgainst;
+  final int technicalFaults;
+  final int yellowCards;
+  final int twoMinutes;
+  final int redCards;
+}
+
 /// Everything the scoreboard, the court and the bench show at one moment.
 class GameState {
   const GameState({
@@ -97,6 +131,7 @@ class GameState {
     required this.bench,
     this.penalties = const [],
     this.cards = const {},
+    this.stats = const {},
     this.ended = false,
   });
 
@@ -118,6 +153,11 @@ class GameState {
 
   /// Cards of players (key: player id) and officials (key: "home:A").
   final Map<String, CardMark> cards;
+
+  /// Per player id; players without an entry have done nothing yet.
+  final Map<String, PlayerStats> stats;
+
+  PlayerStats statsOf(String playerId) => stats[playerId] ?? PlayerStats.none;
 
   int get half => clockSeconds < game.halfMinutes * 60 ? 1 : 2;
 }

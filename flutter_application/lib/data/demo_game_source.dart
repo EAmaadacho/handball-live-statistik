@@ -101,6 +101,28 @@ class DemoGameSource implements GameSource {
       Side.away: ['a19', 'a2', 'a17', 'a12'],
     },
     cards: {'jonas4': CardMark.yellow, 'away:A': CardMark.yellow},
+    stats: {
+      'nora1': PlayerStats(saves: 9, goalsAgainst: 12),
+      'max7': PlayerStats(
+          goals: 5,
+          shots: 7,
+          sevenMeterGoals: 2,
+          sevenMeterShots: 2,
+          technicalFaults: 1),
+      'lisa12': PlayerStats(goals: 3, shots: 4),
+      'jonas4': PlayerStats(goals: 2, shots: 3, yellowCards: 1),
+      'ben5': PlayerStats(goals: 1, shots: 3),
+      'paul11': PlayerStats(goals: 1, shots: 2),
+      'finn23': PlayerStats(goals: 2, shots: 2),
+      'a1': PlayerStats(saves: 6, goalsAgainst: 14),
+      'a3': PlayerStats(goals: 3, shots: 5),
+      'a5': PlayerStats(goals: 2, shots: 4),
+      'a8': PlayerStats(goals: 1, shots: 2, twoMinutes: 1),
+      'a10': PlayerStats(
+          goals: 4, shots: 6, sevenMeterGoals: 1, sevenMeterShots: 2),
+      'a6': PlayerStats(goals: 2, shots: 3),
+      'a14': PlayerStats(shots: 1, technicalFaults: 2),
+    },
   );
 
   @override

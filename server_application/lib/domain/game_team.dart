@@ -23,5 +23,13 @@ class GameTeam {
       GameTeam(name: team.name, shortCode: team.shortCode, squad: team.squad);
 
   /// Whether a player with [playerId] is in the game squad.
-  bool hasPlayer(String playerId) => squad.any((p) => p.id == playerId);
+  bool hasPlayer(String playerId) => playerById(playerId) != null;
+
+  /// The player with [playerId] in the game squad, or `null`.
+  Player? playerById(String playerId) {
+    for (final player in squad) {
+      if (player.id == playerId) return player;
+    }
+    return null;
+  }
 }

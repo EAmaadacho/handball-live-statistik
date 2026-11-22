@@ -13,6 +13,7 @@ enum EventType {
   redCard,
   technicalFault,
   timeout,
+  substitution,
 }
 
 /// One thing that happened in a game, stamped by the server with the game
@@ -22,11 +23,18 @@ enum EventType {
 /// A timeout belongs to the team, so it has no player.
 /// A save is stored on the shooter: "Parade" on Jan Becker of Hilden is a
 /// shot of Jan saved by Mettmann's goalkeeper (E1.3).
+///
+/// [goalkeeperId] is the opposing goalkeeper on the field at that moment,
+/// stored with goals and saves (E1.2). It is `null` for an empty goal (E1.5).
+/// A substitution stores the player going out in [playerId] and the player
+/// coming in in [incomingPlayerId] (E5.3).
 class GameEvent {
   final int number;
   final EventType type;
   final Side side;
   final String? playerId;
+  final String? incomingPlayerId;
+  final String? goalkeeperId;
   final Duration gameTime;
   final int half;
 
@@ -35,6 +43,8 @@ class GameEvent {
     required this.type,
     required this.side,
     required this.playerId,
+    this.incomingPlayerId,
+    this.goalkeeperId,
     required this.gameTime,
     required this.half,
   });
@@ -44,3 +54,6 @@ class GameEvent {
       this.side == side &&
       (type == EventType.goal || type == EventType.sevenMeterGoal);
 }
+
+/// The other team: home → away, away → home.
+Side opponentOf(Side side) => side == Side.home ? Side.away : Side.home;

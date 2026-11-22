@@ -107,6 +107,7 @@ class Game {
     if (lineup.isOnField(inId)) {
       throw const RuleViolation('Dieser Spieler steht schon auf dem Feld.');
     }
+    _checkNotDisqualified(side, inId);
     return _append(GameEvent(
       number: nextEventNumber,
       type: EventType.substitution,
@@ -141,6 +142,8 @@ class Game {
     if (playerId != null && !team.hasPlayer(playerId)) {
       throw RuleViolation('Der Spieler gehört nicht zu ${team.name}.');
     }
+    if (playerId != null) _checkNotDisqualified(side, playerId);
+    if (isTimeout) _checkTimeoutAllowed(side, now);
     if (_needsPlayerOnField(type) && !lineupOf(side)!.isOnField(playerId!)) {
       throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
     }
@@ -179,6 +182,17 @@ class Game {
           'Ein Wechsel lässt sich nicht löschen. Bitte zurückwechseln.');
     }
     return _copy(events: events.where((e) => e.number != number).toList());
+  }
+
+  /// Whether the player is disqualified: a red card or a third
+  /// two-minute penalty (R2).
+  ///
+  /// Computed from the events, never stored. Deleting Max's third penalty
+  /// lifts his disqualification at once (E2.2).
+  bool isDisqualified(Side side, String playerId) {
+    final own = events.where((e) => e.side == side && e.playerId == playerId);
+    return own.any((e) => e.type == EventType.redCard) ||
+        own.where((e) => e.type == EventType.twoMinutes).length >= 3;
   }
 
   /// The current score, computed from goals and 7-metre goals (E1.1).
@@ -223,6 +237,31 @@ class Game {
         EventType.sevenMeterGoal,
         EventType.save,
       }.contains(type);
+
+  void _checkNotDisqualified(Side side, String playerId) {
+    if (isDisqualified(side, playerId)) {
+      final player = teamOf(side).playerById(playerId)!;
+      throw RuleViolation('${player.firstName} ist disqualifiziert.');
+    }
+  }
+
+  /// Timeout rules R1: at most 3 per game, 2 per half and 1 in the last
+  /// 5 minutes (from 55:00 with 30-minute halves).
+  void _checkTimeoutAllowed(Side side, DateTime now) {
+    final timeouts =
+        events.where((e) => e.side == side && e.type == EventType.timeout);
+    if (timeouts.length >= 3) {
+      throw RuleViolation('${teamOf(side).name} hat keine Auszeit mehr.');
+    }
+    if (timeouts.where((e) => e.half == _half).length >= 2) {
+      throw const RuleViolation('Nur 2 Auszeiten pro Halbzeit.');
+    }
+    final lastFiveMinutes = clock.halfLength * 2 - const Duration(minutes: 5);
+    if (clock.gameTime(now) >= lastFiveMinutes &&
+        timeouts.any((e) => e.gameTime >= lastFiveMinutes)) {
+      throw const RuleViolation('In den letzten 5 Minuten nur eine Auszeit.');
+    }
+  }
 
   void _checkGameIsRunning() {
     if (clock.phase == ClockPhase.notStarted) {

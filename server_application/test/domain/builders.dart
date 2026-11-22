@@ -1,6 +1,9 @@
 import 'package:test/test.dart';
 import 'package:server_application/domain/rule_violation.dart';
+import 'package:server_application/domain/game.dart';
 import 'package:server_application/domain/game_clock.dart';
+import 'package:server_application/domain/game_event.dart';
+import 'package:server_application/domain/game_team.dart';
 import 'package:server_application/domain/player.dart';
 import 'package:server_application/domain/team.dart';
 
@@ -64,3 +67,27 @@ GameClock aClockInTheSecondHalf() =>
 Matcher throwsRuleViolation(String message) => throwsA(
       isA<RuleViolation>().having((e) => e.message, 'message', message),
     );
+
+/// Jan Becker (No. 5) of HSG Hilden, the opponent without registration.
+Player jan() =>
+    aPlayer(id: 'p-jan', number: 5, firstName: 'Jan', lastName: 'Becker');
+
+/// HSG Hilden with a game squad of its own (S1.1).
+GameTeam hilden() =>
+    GameTeam(name: 'HSG Hilden', shortCode: 'HSG', squad: [jan()]);
+
+/// TV Mettmann against HSG Hilden before kick-off.
+Game aGame() =>
+    Game.create(home: GameTeam.fromTeam(mettmann()), away: hilden());
+
+/// TV Mettmann against HSG Hilden, kick-off at 15:00:00, clock running.
+Game aRunningGame() => aGame().startClock(at(0));
+
+/// Adds [count] goals for [side] at 15:01:00, by Max (home) or Jan (away).
+Game withGoals(Game game, Side side, int count) {
+  final playerId = side == Side.home ? 'p-max' : 'p-jan';
+  for (var i = 0; i < count; i++) {
+    game = game.record(EventType.goal, side, playerId, at(1));
+  }
+  return game;
+}

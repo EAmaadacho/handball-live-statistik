@@ -4,6 +4,7 @@ import 'data/game_source.dart';
 import 'pages/link_invalid_page.dart';
 import 'pages/placeholder_page.dart';
 import 'pages/start_page.dart';
+import 'pages/ticker_page.dart';
 
 /// Address of the page "Link ungültig" (T1.3).
 const linkInvalidPath = '/link-ungueltig';
@@ -48,8 +49,8 @@ GoRouter createRouter(GameSource source, {String initialLocation = '/'}) {
                   gameId, state.pathParameters['tickerCode']!);
           return ok ? null : linkInvalidPath;
         },
-        builder: (context, state) => const PlaceholderPage(
-            title: 'Ticker', subtitle: 'kommt in Schritt 4 und 5'),
+        builder: (context, state) =>
+            TickerPage(gameId: int.parse(state.pathParameters['gameId']!)),
       ),
       GoRoute(
         path: '/spiel/:gameId/live',

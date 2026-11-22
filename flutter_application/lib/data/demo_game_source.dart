@@ -101,6 +101,51 @@ class DemoGameSource implements GameSource {
       Side.away: ['a19', 'a2', 'a17', 'a12'],
     },
     cards: {'jonas4': CardMark.yellow, 'away:A': CardMark.yellow},
+    halftimeScore: '8:7',
+    events: [
+      GameEvent(
+          clockSeconds: 38 * 60 + 12,
+          kind: EventKind.goal,
+          side: Side.home,
+          who: '7 Max Mustermann',
+          homeGoals: 14,
+          awayGoals: 12),
+      GameEvent(
+          clockSeconds: 37 * 60 + 40,
+          kind: EventKind.save,
+          side: Side.home,
+          who: '1 Nora Neumann',
+          homeGoals: 13,
+          awayGoals: 12),
+      GameEvent(
+          clockSeconds: 37 * 60 + 3,
+          kind: EventKind.twoMinutes,
+          side: Side.away,
+          who: '8 Nico Hahn',
+          homeGoals: 13,
+          awayGoals: 12),
+      GameEvent(
+          clockSeconds: 36 * 60 + 21,
+          kind: EventKind.goal,
+          side: Side.away,
+          who: '10 Kai Roth',
+          homeGoals: 13,
+          awayGoals: 12),
+      GameEvent(
+          clockSeconds: 35 * 60 + 50,
+          kind: EventKind.sevenMeterGoal,
+          side: Side.home,
+          who: '7 Max Mustermann',
+          homeGoals: 13,
+          awayGoals: 11),
+      GameEvent(
+          clockSeconds: 34 * 60 + 2,
+          kind: EventKind.timeout,
+          side: Side.away,
+          who: 'HSG Hilden',
+          homeGoals: 12,
+          awayGoals: 11),
+    ],
     stats: {
       'nora1': PlayerStats(saves: 9, goalsAgainst: 12),
       'max7': PlayerStats(
@@ -132,8 +177,18 @@ class DemoGameSource implements GameSource {
   Future<Team?> loadTeamByCode(String code) async =>
       code == teamCode ? mettmann : null;
 
+  final _started = DateTime.now();
+
+  /// Set to false to see how the pages behave without a connection (L1.1, E1.6).
+  bool online = true;
+
+  /// The clock runs on as it would on the server (ADR-003).
   @override
-  Future<GameState?> loadState(int id) async => id == gameId ? state : null;
+  Future<GameState?> loadState(int id) async {
+    if (!online) throw StateError('Keine Verbindung');
+    if (id != gameId) return null;
+    return state.advancedBy(DateTime.now().difference(_started).inSeconds);
+  }
 
   @override
   Future<bool> isTickerCode(int id, String code) async =>

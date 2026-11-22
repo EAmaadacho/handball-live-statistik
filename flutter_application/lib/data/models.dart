@@ -85,6 +85,47 @@ class Penalty {
   final int secondsLeft;
 }
 
+enum EventKind {
+  goal('Tor'),
+  miss('Fehlwurf'),
+  save('Parade'),
+  sevenMeterGoal('7 m Tor'),
+  sevenMeterMiss('7 m vorbei'),
+  technicalFault('Techn. Fehler'),
+  yellowCard('Gelb'),
+  twoMinutes('2 Minuten'),
+  redCard('Rot'),
+  timeout('Auszeit');
+
+  const EventKind(this.label);
+
+  /// Shown in the event history, e.g. "Tor".
+  final String label;
+}
+
+/// One entry of the event history, e.g. 38:12 Tor · 7 Max Mustermann → 14:12.
+class GameEvent {
+  const GameEvent({
+    required this.clockSeconds,
+    required this.kind,
+    required this.side,
+    required this.who,
+    required this.homeGoals,
+    required this.awayGoals,
+  });
+
+  final int clockSeconds;
+  final EventKind kind;
+  final Side side;
+
+  /// Player or official, e.g. "7 Max Mustermann"; for a timeout the team name.
+  final String who;
+
+  /// Score after this event.
+  final int homeGoals;
+  final int awayGoals;
+}
+
 /// What a player did in this game, counted by the server from the events (ADR-006).
 ///
 /// Example: Max has 5 goals from 7 shots, both 7 m converted → goals 5,
@@ -132,6 +173,8 @@ class GameState {
     this.penalties = const [],
     this.cards = const {},
     this.stats = const {},
+    this.events = const [],
+    this.halftimeScore,
     this.ended = false,
   });
 
@@ -159,5 +202,79 @@ class GameState {
 
   PlayerStats statsOf(String playerId) => stats[playerId] ?? PlayerStats.none;
 
+  /// Event history, newest first (L1).
+  final List<GameEvent> events;
+
+  /// Score at half time, e.g. "8:7"; null before half time (U5).
+  final String? halftimeScore;
+
   int get half => clockSeconds < game.halfMinutes * 60 ? 1 : 2;
+
+  /// The same state [seconds] later: clock and penalties have moved on.
+  GameState advancedBy(int seconds) {
+    if (!clockRunning || seconds <= 0) return this;
+    return GameState(
+      game: game,
+      goals: goals,
+      clockSeconds: clockSeconds + seconds,
+      clockRunning: clockRunning,
+      timeouts: timeouts,
+      field: field,
+      bench: bench,
+      penalties: [
+        for (final p in penalties)
+          if (p.secondsLeft > seconds)
+            Penalty(
+                side: p.side,
+                label: p.label,
+                secondsLeft: p.secondsLeft - seconds),
+      ],
+      cards: cards,
+      stats: stats,
+      events: events,
+      halftimeScore: halftimeScore,
+      ended: ended,
+    );
+  }
+}
+
+/// Sums over all players of one team, plus cards of the officials and timeouts (L7).
+///
+/// Example: TV Mettmann has 14 goals from 21 shots and 1 timeout.
+class TeamTotals {
+  TeamTotals.of(GameState state, Side side)
+      : timeouts = state.timeouts[side] ?? 0,
+        officialYellow = state.game
+            .team(side)
+            .officials
+            .where((o) =>
+                state.cards['${side.name}:${o.letter}'] == CardMark.yellow)
+            .length,
+        officialRed = state.game
+            .team(side)
+            .officials
+            .where(
+                (o) => state.cards['${side.name}:${o.letter}'] == CardMark.red)
+            .length,
+        _players = [
+          for (final p in state.game.team(side).players) state.statsOf(p.id)
+        ];
+
+  final List<PlayerStats> _players;
+  final int timeouts;
+  final int officialYellow;
+  final int officialRed;
+
+  int _sum(int Function(PlayerStats s) f) =>
+      _players.fold(0, (n, s) => n + f(s));
+
+  int get goals => _sum((s) => s.goals);
+  int get shots => _sum((s) => s.shots);
+  int get sevenMeterGoals => _sum((s) => s.sevenMeterGoals);
+  int get sevenMeterShots => _sum((s) => s.sevenMeterShots);
+  int get saves => _sum((s) => s.saves);
+  int get technicalFaults => _sum((s) => s.technicalFaults);
+  int get yellowCards => _sum((s) => s.yellowCards) + officialYellow;
+  int get twoMinutes => _sum((s) => s.twoMinutes);
+  int get redCards => _sum((s) => s.redCards) + officialRed;
 }

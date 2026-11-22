@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'data/game_source.dart';
 import 'pages/link_invalid_page.dart';
+import 'pages/live_page.dart';
 import 'pages/placeholder_page.dart';
 import 'pages/start_page.dart';
 import 'pages/ticker_page.dart';
@@ -59,8 +60,8 @@ GoRouter createRouter(GameSource source, {String initialLocation = '/'}) {
           final game = gameId == null ? null : await source.loadGame(gameId);
           return game == null ? linkInvalidPath : null;
         },
-        builder: (context, state) => const PlaceholderPage(
-            title: 'Live', subtitle: 'kommt in Schritt 3'),
+        builder: (context, state) =>
+            LivePage(gameId: int.parse(state.pathParameters['gameId']!)),
       ),
     ],
   );

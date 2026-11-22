@@ -5,13 +5,14 @@ import '../data/game_source.dart';
 import '../data/models.dart';
 import '../widgets/bench.dart';
 import '../widgets/court.dart';
+import '../widgets/person_card.dart';
 import '../widgets/scoreboard.dart';
 
 /// Ticker page (E1, E5, U1–U3).
 ///
-/// Step 2 only puts the building blocks together: scoreboard, both
-/// benches and the court. Tapping, actions and the layouts for
-/// landscape and web follow in step 4.
+/// Step 2 puts the building blocks together: scoreboard, both benches
+/// and the court. Tapping a person opens their card. Actions and the
+/// layouts for landscape and web follow in step 4.
 class TickerPage extends StatelessWidget {
   const TickerPage({super.key, required this.gameId});
 
@@ -46,12 +47,20 @@ class TickerPage extends StatelessWidget {
                                 Bench(
                                     state: state,
                                     side: Side.away,
-                                    onAddPlayer: () {}),
+                                    onAddPlayer: () {},
+                                    onPlayerTap: (id) => showPlayerCard(
+                                        context, state, Side.away, id),
+                                    onOfficialTap: (o) => showOfficialCard(
+                                        context, state, Side.away, o)),
                                 const SizedBox(height: 8),
                                 Bench(
                                     state: state,
                                     side: Side.home,
-                                    onAddPlayer: () {}),
+                                    onAddPlayer: () {},
+                                    onPlayerTap: (id) => showPlayerCard(
+                                        context, state, Side.home, id),
+                                    onOfficialTap: (o) => showOfficialCard(
+                                        context, state, Side.home, o)),
                               ],
                             ),
                           ),
@@ -60,7 +69,14 @@ class TickerPage extends StatelessWidget {
                         Expanded(
                           child: Align(
                               alignment: Alignment.topCenter,
-                              child: Court(state: state)),
+                              child: Court(
+                                  state: state,
+                                  onPlaceTap: (side, place) {
+                                    final id = state.field[side]![place];
+                                    if (id != null) {
+                                      showPlayerCard(context, state, side, id);
+                                    }
+                                  })),
                         ),
                       ],
                     ),

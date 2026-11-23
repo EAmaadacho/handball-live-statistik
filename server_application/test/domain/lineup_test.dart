@@ -22,16 +22,7 @@ void main() {
           () => game.setLineup(
               Side.home, 'p-nora', mettmannFieldPlayers.sublist(1)),
           throwsRuleViolation(
-              'Bitte 7 verschiedene Spieler aufstellen: 1 Torwart, 6 Feldspieler.'));
-    });
-
-    test('E5_1 rejects Max in goal', () {
-      final game = aGame();
-
-      expect(
-          () => game.setLineup(Side.home, 'p-max',
-              ['p-nora', 'p-lisa', 'p-ben', 'p-paul', 'p-finn', 'p-leon']),
-          throwsRuleViolation('Ins Tor darf nur ein Torwart.'));
+              'Bitte 7 verschiedene Spieler aufstellen: 1 im Tor, 6 im Feld.'));
     });
 
     test('E5_1 rejects Jan of Hilden in the lineup of Mettmann', () {

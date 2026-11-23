@@ -1,10 +1,9 @@
-import 'player.dart';
-
 /// Who stands on the field for one team: the goal slot and the field players.
 ///
 /// Example: Nora in goal, Max, Lisa and four more in the field (E5.1).
-/// The goal slot can be empty: then a 7th field player plays and goals
-/// against count for no goalkeeper (E1.5).
+/// Any player may stand in the goal slot, also a field player like Max when
+/// no goalkeeper is left (E5.7). The goal slot can be empty: then a 7th
+/// field player plays and goals against count for no goalkeeper (E1.5).
 class Lineup {
   final String? goalkeeperId;
   final List<String> fieldPlayerIds;
@@ -18,22 +17,41 @@ class Lineup {
 
   bool isOnField(String playerId) => playerIds.contains(playerId);
 
-  /// Swaps [outId] for [incoming] (E5.2).
+  /// Whether the goal is free once [outId] has left, e.g. Nora goes out.
+  bool goalIsFreeWithout(String? outId) =>
+      goalkeeperId == null || goalkeeperId == outId;
+
+  /// Swaps [outId] for [incomingId] (E5.2).
   ///
-  /// A goalkeeper coming in takes the goal when the goal is free, e.g. Lea
-  /// for Nora. A field player coming in for the goalkeeper leaves the goal
-  /// empty and plays as 7th field player, e.g. Tom for Nora (E1.5).
-  Lineup substitute(String outId, Player incoming) {
+  /// With [intoGoal] the incoming player takes the free goal, e.g. Lea for
+  /// Nora. Otherwise he plays in the field; if [outId] was in goal, the goal
+  /// stays empty, e.g. Tom for Nora (E1.5).
+  Lineup substitute(String outId, String incomingId, {required bool intoGoal}) {
     final field = fieldPlayerIds.where((id) => id != outId).toList();
-    final goalIsFree = goalkeeperId == null || goalkeeperId == outId;
-    if (goalIsFree && incoming.position == Position.goalkeeper) {
-      return Lineup(goalkeeperId: incoming.id, fieldPlayerIds: field);
+    if (intoGoal) {
+      return Lineup(goalkeeperId: incomingId, fieldPlayerIds: field);
     }
     return Lineup(
       goalkeeperId: goalkeeperId == outId ? null : goalkeeperId,
-      fieldPlayerIds: [...field, incoming.id],
+      fieldPlayerIds: [...field, incomingId],
     );
   }
+
+  /// [incomingId] comes onto a free place, with [intoGoal] into the empty
+  /// goal.
+  Lineup addPlayer(String incomingId, {required bool intoGoal}) => intoGoal
+      ? Lineup(goalkeeperId: incomingId, fieldPlayerIds: fieldPlayerIds)
+      : Lineup(
+          goalkeeperId: goalkeeperId,
+          fieldPlayerIds: [...fieldPlayerIds, incomingId],
+        );
+
+  /// Field player [playerId] moves into the empty goal, e.g. Max when no
+  /// goalkeeper is left (E5.7).
+  Lineup moveIntoGoal(String playerId) => Lineup(
+        goalkeeperId: playerId,
+        fieldPlayerIds: fieldPlayerIds.where((id) => id != playerId).toList(),
+      );
 
   /// The player leaves the field and his place stays free, e.g. Max with a
   /// two-minute penalty (E5.4). For the goalkeeper the goal stays empty (E5.6).
@@ -41,15 +59,4 @@ class Lineup {
         goalkeeperId: goalkeeperId == playerId ? null : goalkeeperId,
         fieldPlayerIds: fieldPlayerIds.where((id) => id != playerId).toList(),
       );
-
-  /// [incoming] comes onto a free place. A goalkeeper takes an empty goal.
-  Lineup addPlayer(Player incoming) {
-    if (goalkeeperId == null && incoming.position == Position.goalkeeper) {
-      return Lineup(goalkeeperId: incoming.id, fieldPlayerIds: fieldPlayerIds);
-    }
-    return Lineup(
-      goalkeeperId: goalkeeperId,
-      fieldPlayerIds: [...fieldPlayerIds, incoming.id],
-    );
-  }
 }

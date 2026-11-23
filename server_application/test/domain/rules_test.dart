@@ -12,8 +12,18 @@ Game timeout(Game game, int minutes) =>
 Game aGameInTheSecondHalf() =>
     aRunningGame().halfTime(at(30)).startClock(at(0));
 
+/// Two minutes for a Mettmann player on the field at [minutes].
 Game penalty(Game game, String playerId, int minutes) =>
     game.record(EventType.twoMinutes, Side.home, playerId, at(minutes));
+
+/// Two minutes at [minutes]; when they have run out the player comes back.
+Game penaltyAndBack(Game game, String playerId, int minutes) =>
+    penalty(game, playerId, minutes)
+        .bringOn(Side.home, playerId, at(minutes + 2));
+
+/// Max with two penalties served and back on the field at 17:00.
+Game maxWithTwoPenalties() =>
+    penaltyAndBack(penaltyAndBack(aRunningGame(), 'p-max', 5), 'p-max', 15);
 
 void main() {
   group('R1 timeouts', () {
@@ -64,7 +74,7 @@ void main() {
 
   group('R2 third two-minute penalty', () {
     test('R2 Max is disqualified after his third two-minute penalty', () {
-      final game = penalty(penalty(aRunningGame(), 'p-max', 5), 'p-max', 15);
+      final game = maxWithTwoPenalties();
 
       final result = penalty(game, 'p-max', 25);
 
@@ -83,10 +93,7 @@ void main() {
 
     test('E2_2 deleting Max\'s third penalty removes the automatic red card',
         () {
-      final game = penalty(
-          penalty(penalty(aRunningGame(), 'p-max', 5), 'p-max', 15),
-          'p-max',
-          25);
+      final game = penalty(maxWithTwoPenalties(), 'p-max', 25);
       final third = game.events.last.number;
 
       final result = game.deleteEvent(third);
@@ -106,9 +113,8 @@ void main() {
 
     test('R3 rejects a yellow card for Lisa on the bench after her red card',
         () {
-      final game = aRunningGame()
-          .record(EventType.redCard, Side.home, 'p-lisa', at(12))
-          .substitute(Side.home, 'p-lisa', 'p-tom', at(12));
+      final game =
+          aRunningGame().record(EventType.redCard, Side.home, 'p-lisa', at(12));
 
       expect(
           () => game.record(EventType.yellowCard, Side.home, 'p-lisa', at(13)),
@@ -116,13 +122,9 @@ void main() {
     });
 
     test('R3 rejects bringing Max back in after his third penalty', () {
-      final game = penalty(
-              penalty(penalty(aRunningGame(), 'p-max', 5), 'p-max', 15),
-              'p-max',
-              25)
-          .substitute(Side.home, 'p-max', 'p-tom', at(25));
+      final game = penalty(maxWithTwoPenalties(), 'p-max', 25);
 
-      expect(() => game.substitute(Side.home, 'p-tom', 'p-max', at(26)),
+      expect(() => game.bringOn(Side.home, 'p-max', at(27)),
           throwsRuleViolation('Max ist disqualifiziert.'));
     });
   });

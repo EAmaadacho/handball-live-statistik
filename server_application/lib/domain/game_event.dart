@@ -27,13 +27,18 @@ enum EventType {
 /// [goalkeeperId] is the opposing goalkeeper on the field at that moment,
 /// stored with goals and saves (E1.2). It is `null` for an empty goal (E1.5).
 /// A substitution stores the player going out in [playerId] and the player
-/// coming in in [incomingPlayerId] (E5.3).
+/// coming in in [incomingPlayerId] (E5.3). Without [playerId] the player
+/// comes in on a free place, e.g. after a penalty has run out.
+/// A two-minute penalty or a red card stores in [leavingPlayerId] who leaves
+/// the field: the punished player, or a field player for a punished
+/// player on the bench (E5.4).
 class GameEvent {
   final int number;
   final EventType type;
   final Side side;
   final String? playerId;
   final String? incomingPlayerId;
+  final String? leavingPlayerId;
   final String? goalkeeperId;
   final Duration gameTime;
   final int half;
@@ -44,6 +49,7 @@ class GameEvent {
     required this.side,
     required this.playerId,
     this.incomingPlayerId,
+    this.leavingPlayerId,
     this.goalkeeperId,
     required this.gameTime,
     required this.half,

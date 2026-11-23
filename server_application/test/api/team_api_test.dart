@@ -117,7 +117,7 @@ void main() {
       expect(jsonEncode(json), isNot(contains('secret-code')));
     });
 
-    test('T1_3 an unknown team answers 404', () async {
+    test('T1 an unknown team answers 404', () async {
       final (status, json) = await send(teamApi, 'GET', '/teams/nope');
 
       expect(status, 404);

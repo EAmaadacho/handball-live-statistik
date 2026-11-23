@@ -33,6 +33,10 @@ jobs:
         working-directory: server_application
         run: dart test
 
+      - name: Server – Muss-Kriterien mit Test
+        working-directory: server_application
+        run: dart run tool/criteria_coverage.dart
+
       - name: Client – analyze
         working-directory: flutter_application
         run: flutter analyze

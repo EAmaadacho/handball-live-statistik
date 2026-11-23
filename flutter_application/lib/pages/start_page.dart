@@ -2,18 +2,18 @@ import 'package:material_ui/material_ui.dart';
 import 'package:openapi/api.dart';
 import 'package:provider/provider.dart';
 
-/// Placeholder start page: asks the server once whether it is running.
+/// Start page (T1). Until step 6 it only asks the server once whether it is running.
 ///
 /// Example: the server answers GET /health with {"status": "ok"},
 /// so the page shows "Server erreichbar".
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class StartPage extends StatefulWidget {
+  const StartPage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<StartPage> createState() => _StartPageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _StartPageState extends State<StartPage> {
   late final Future<bool> _serverIsUp;
 
   @override

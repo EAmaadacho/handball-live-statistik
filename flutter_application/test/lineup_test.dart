@@ -118,4 +118,15 @@ void main() {
 
     expect(_message(tester), 'Die Nummer 3 ist schon vergeben.');
   });
+
+  testWidgets('S1_4 before kick-off Erik is taken off the match report',
+      (tester) async {
+    final source = await _open(tester);
+    await _tap(tester, _key('BenchPlayer-erik15'));
+    await _tap(tester, _key('RemoveFromReport'));
+
+    expect(_key('BenchPlayer-erik15'), findsNothing);
+    final state = (await source.loadState(18))!;
+    expect(state.reportOf(Side.home), isNot(contains('erik15')));
+  });
 }

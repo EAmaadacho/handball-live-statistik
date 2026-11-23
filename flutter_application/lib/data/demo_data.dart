@@ -1,4 +1,8 @@
-/// Example data from the prototype: TV Mettmann against HSG Hilden, game 17.
+/// Example data from the prototype: TV Mettmann against HSG Hilden.
+///
+/// Game 17 runs (38:47, 14:12). Game 18 is the next game, before kick-off,
+/// to set up the lineup (E5.1). Leon and Luca are in Mettmann's squad but
+/// not on the match report, so they can be registered late (S1.4).
 ///
 /// [DemoGameSource] starts from here and changes a copy while ticking.
 library;
@@ -24,6 +28,8 @@ const demoMettmann = Team(
     Player(id: 'finn23', number: 23, firstName: 'Finn', lastName: 'Krüger'),
     Player(id: 'tom9', number: 9, firstName: 'Tom', lastName: 'Neumann'),
     Player(id: 'erik15', number: 15, firstName: 'Erik', lastName: 'Hoffmann'),
+    Player(id: 'leon18', number: 18, firstName: 'Leon', lastName: 'Wolf'),
+    Player(id: 'luca21', number: 21, firstName: 'Luca', lastName: 'Richter'),
     Player(
         id: 'mia16',
         number: 16,
@@ -42,6 +48,7 @@ const demoHilden = Team(
   id: 'hsg',
   name: 'HSG Hilden',
   shortName: 'HSG',
+  gameSquadOnly: true,
   players: [
     Player(
         id: 'a1',
@@ -102,6 +109,25 @@ const demoState = GameState(
   cards: {'jonas4': CardMark.yellow, 'away:A': CardMark.yellow},
   halftimeScore: '8:7',
   goalkeepers: {Side.home: 'nora1', Side.away: 'a1'},
+  matchReport: {
+    Side.home: [
+      'nora1', 'max7', 'lisa12', 'jonas4', 'ben5', //
+      'paul11', 'finn23', 'tom9', 'erik15', 'mia16',
+    ],
+    Side.away: [
+      'a1',
+      'a3',
+      'a5',
+      'a8',
+      'a10',
+      'a6',
+      'a14',
+      'a19',
+      'a2',
+      'a17',
+      'a12',
+    ],
+  },
   events: [
     GameEvent(
         number: 6,
@@ -179,4 +205,39 @@ const demoState = GameState(
     'a6': PlayerStats(goals: 2, shots: 3),
     'a14': PlayerStats(shots: 1, technicalFaults: 2),
   },
+);
+
+const demoNextGame = Game(id: 18, home: demoMettmann, away: demoHilden);
+
+/// Game 18 before kick-off: nobody on the field yet, everyone on the bench.
+const demoNextState = GameState(
+  game: demoNextGame,
+  goals: {Side.home: 0, Side.away: 0},
+  clockSeconds: 0,
+  clockRunning: false,
+  timeouts: {Side.home: 0, Side.away: 0},
+  field: {
+    Side.home: [null, null, null, null, null, null, null],
+    Side.away: [null, null, null, null, null, null, null],
+  },
+  bench: {
+    Side.home: [
+      'nora1', 'max7', 'lisa12', 'jonas4', 'ben5', //
+      'paul11', 'finn23', 'tom9', 'erik15', 'mia16',
+    ],
+    Side.away: [
+      'a1',
+      'a3',
+      'a5',
+      'a8',
+      'a10',
+      'a6',
+      'a14',
+      'a19',
+      'a2',
+      'a17',
+      'a12',
+    ],
+  },
+  goalkeepers: {Side.home: null, Side.away: null},
 );

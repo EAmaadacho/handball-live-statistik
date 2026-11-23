@@ -12,6 +12,8 @@ import '../widgets/court.dart' show fieldPlaces;
 import '../widgets/court_with_benches.dart';
 import '../widgets/format.dart';
 import '../widgets/goalkeeper_choice.dart';
+import '../widgets/lineup_board.dart';
+import '../widgets/player_choice.dart';
 import '../widgets/scoreboard.dart';
 import '../widgets/section_heading.dart';
 import '../widgets/ticker_controls.dart';
@@ -240,6 +242,63 @@ class _TickerPageState extends State<TickerPage> {
     );
   }
 
+  /// Kick-off: both lineups to the server, then the clock starts (E5.1, U1).
+  Future<void> _kickoff(Map<Side, List<String>> lineups) => _send(
+        'Anpfiff',
+        () async {
+          for (final MapEntry(key: side, value: places) in lineups.entries) {
+            await _source.setLineup(widget.gameId, widget.tickerCode, side,
+                places.first, places.sublist(1));
+          }
+          await _source.toggleClock(widget.gameId, widget.tickerCode);
+        },
+        retry: () => _kickoff(lineups),
+      );
+
+  /// Late registration over "+" at the bench, before and during the game
+  /// (S1.4). A registered team picks from its squad, an opponent without
+  /// registration types in number and name (S1.1).
+  Future<void> _addPlayer(Side side) async {
+    final team = _state!.game.team(side);
+    if (team.gameSquadOnly) {
+      final p = await enterNewPlayer(context, team);
+      if (p == null) return;
+      final what = 'Nachgemeldet: ${p.number} ${p.firstName}';
+      final ok = await _send(
+        what,
+        () => _source.addSquadPlayer(widget.gameId, widget.tickerCode, side,
+            p.number, p.firstName, p.lastName),
+        retry: () => _addPlayer(side),
+      );
+      if (ok) _message('$what, sitzt auf der Bank.');
+      return;
+    }
+    final id = await chooseLatePlayer(context, _state!, side);
+    if (id == null) return;
+    final p = team.player(id);
+    final what = 'Nachgemeldet: ${p.number} ${p.firstName}';
+    final ok = await _send(
+      what,
+      () =>
+          _source.addToMatchReport(widget.gameId, widget.tickerCode, side, id),
+      retry: () => _addPlayer(side),
+    );
+    if (ok) _message('$what, sitzt auf der Bank.');
+  }
+
+  /// Before kick-off: [playerId] does not play today and leaves the report.
+  Future<void> _removeFromReport(Side side, String playerId) async {
+    final p = _state!.game.team(side).player(playerId);
+    final what = '${p.number} ${p.firstName} aus dem Spielbericht genommen';
+    final ok = await _send(
+      what,
+      () => _source.removeFromMatchReport(
+          widget.gameId, widget.tickerCode, side, playerId),
+      retry: () => _removeFromReport(side, playerId),
+    );
+    if (ok) _message('$what. Über „+“ kann er wieder nachgemeldet werden.');
+  }
+
   // ------------------------------------------------------------------ taps
 
   /// A player on the court or bench: finishes a waiting substitution,
@@ -345,16 +404,40 @@ class _TickerPageState extends State<TickerPage> {
                 child: Text(_offline
                     ? 'Verbindung unterbrochen. Neuer Versuch läuft …'
                     : 'Lädt …'))
-            : LayoutBuilder(
-                builder: (context, box) => switch (screenKindFor(box.biggest)) {
-                  ScreenKind.phone => _phone(state),
-                  ScreenKind.phoneLandscape => _landscape(state),
-                  ScreenKind.web => _web(state),
-                },
-              ),
+            : !state.started
+                ? _beforeKickoff(state)
+                : LayoutBuilder(
+                    builder: (context, box) =>
+                        switch (screenKindFor(box.biggest)) {
+                      ScreenKind.phone => _phone(state),
+                      ScreenKind.phoneLandscape => _landscape(state),
+                      ScreenKind.web => _web(state),
+                    },
+                  ),
       ),
     );
   }
+
+  /// Before kick-off the ticker sets up both teams (E5.1).
+  Widget _beforeKickoff(GameState state) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Scoreboard(state: state),
+              if (_offline) const _OfflineLine(),
+              Expanded(
+                child: LineupBoard(
+                    state: state,
+                    onKickoff: _kickoff,
+                    onAddPlayer: _addPlayer,
+                    onRemoveFromReport: _removeFromReport),
+              ),
+            ],
+          ),
+        ),
+      );
 
   List<Widget> _top(GameState state,
           {bool large = false, bool withHistory = true}) =>
@@ -382,7 +465,7 @@ class _TickerPageState extends State<TickerPage> {
             benchWidth: benchWidth,
             selected:
                 _swap?.place == null ? null : (_swap!.side, _swap!.place!),
-            onAddPlayer: (_) => _message('Nachmelden kommt in Schritt 5.'),
+            onAddPlayer: _addPlayer,
             onPlayerTap: _onPlayerTap,
             onEmptyPlaceTap: _onEmptyPlaceTap,
           ),

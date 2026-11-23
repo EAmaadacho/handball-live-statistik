@@ -36,6 +36,7 @@ class Team {
     required this.shortName,
     this.players = const [],
     this.officials = const [],
+    this.gameSquadOnly = false,
   });
 
   final String id;
@@ -45,6 +46,19 @@ class Team {
   final String shortName;
   final List<Player> players;
   final List<Official> officials;
+
+  /// An opponent without registration: its players exist only for this
+  /// game (Spielkader, S1.1). Late players are typed in with number and name.
+  final bool gameSquadOnly;
+
+  /// The same team with [player] added, e.g. a late player of the opponent.
+  Team withPlayer(Player player) => Team(
+      id: id,
+      name: name,
+      shortName: shortName,
+      players: [...players, player],
+      officials: officials,
+      gameSquadOnly: gameSquadOnly);
 
   /// The player with [id], e.g. player('max7') → Max Mustermann.
   Player player(String id) => players.firstWhere((p) => p.id == id);
@@ -64,6 +78,13 @@ class Game {
   final int halfMinutes;
 
   Team team(Side side) => side == Side.home ? home : away;
+
+  /// The same game with [team] in place of the team of [side].
+  Game withTeam(Side side, Team team) => Game(
+      id: id,
+      home: side == Side.home ? team : home,
+      away: side == Side.away ? team : away,
+      halfMinutes: halfMinutes);
 }
 
 /// Home team plays at the bottom of the court, guest team at the top (E5).
@@ -230,6 +251,7 @@ class GameState {
     this.halftimeScore,
     this.ended = false,
     this.goalkeepers,
+    this.matchReport,
   });
 
   final Game game;
@@ -245,6 +267,20 @@ class GameState {
   /// goalkeeper shirt. Null for a team = empty goal (E1.5).
   /// Without this map the squad goalkeeper standing on TH counts.
   final Map<Side, String?>? goalkeepers;
+
+  /// Players on the match report, at most 16 per team (S1.4). Without this
+  /// map everyone on the field, on the bench or sitting out a penalty counts.
+  final Map<Side, List<String>>? matchReport;
+
+  /// The match report of [side], e.g. the 10 players of TV Mettmann.
+  List<String> reportOf(Side side) =>
+      matchReport?[side] ??
+      [
+        ...onField(side),
+        ...bench[side]!,
+        for (final p in penalties)
+          if (p.side == side && p.playerId != null) p.playerId!,
+      ];
   final Map<Side, int> timeouts;
   final List<Penalty> penalties;
 
@@ -288,6 +324,7 @@ class GameState {
 
   /// The same state with some values changed.
   GameState copyWith({
+    Game? game,
     Map<Side, int>? goals,
     int? clockSeconds,
     bool? clockRunning,
@@ -298,10 +335,11 @@ class GameState {
     Map<String, CardMark>? cards,
     Map<String, PlayerStats>? stats,
     Map<Side, String?>? goalkeepers,
+    Map<Side, List<String>>? matchReport,
     List<GameEvent>? events,
   }) =>
       GameState(
-        game: game,
+        game: game ?? this.game,
         goals: goals ?? this.goals,
         clockSeconds: clockSeconds ?? this.clockSeconds,
         clockRunning: clockRunning ?? this.clockRunning,
@@ -312,6 +350,7 @@ class GameState {
         cards: cards ?? this.cards,
         stats: stats ?? this.stats,
         goalkeepers: goalkeepers ?? this.goalkeepers,
+        matchReport: matchReport ?? this.matchReport,
         events: events ?? this.events,
         halftimeScore: halftimeScore,
         ended: ended,

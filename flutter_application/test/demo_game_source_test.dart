@@ -78,6 +78,27 @@ void main() {
     expect((await now()).statsOf('max7').saves, 1);
   });
 
+  test('S1_4 a 17th player on the match report is refused', () async {
+    // Hilden has 11 players on the report; 5 more fit.
+    for (var number = 30; number < 35; number++) {
+      await source.addSquadPlayer(
+          _id, _code, Side.away, number, 'Neu', 'Spieler');
+    }
+    expect((await now()).reportOf(Side.away).length, 16);
+    expect(
+        () => source.addSquadPlayer(_id, _code, Side.away, 40, 'Zu', 'Viel'),
+        throwsA(isA<RejectedAction>().having((e) => e.message, 'message',
+            'Im Spielbericht stehen schon 16 Spieler.')));
+  });
+
+  test('E5_1 kick-off needs both lineups', () async {
+    expect(
+        () => source.toggleClock(
+            DemoGameSource.nextGameId, DemoGameSource.nextTickerCode),
+        throwsA(isA<RejectedAction>().having((e) => e.message, 'message',
+            'Bitte zuerst beide Teams aufstellen.')));
+  });
+
   test('ADR-005 a wrong ticker code is refused', () async {
     expect(() => source.toggleClock(_id, 'falsch'),
         throwsA(isA<RejectedAction>()));

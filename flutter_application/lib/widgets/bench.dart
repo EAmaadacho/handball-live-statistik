@@ -43,11 +43,7 @@ class Bench extends StatelessWidget {
         fontWeight: FontWeight.w700,
         letterSpacing: 1,
         color: muted);
-    final onReport = state.field[side]!.whereType<String>().length +
-        state.bench[side]!.length +
-        state.penalties
-            .where((p) => p.side == side && int.tryParse(p.label) != null)
-            .length;
+    final onReport = state.reportOf(side).length;
 
     return Container(
       key: Key('Bench-${side.name}'),

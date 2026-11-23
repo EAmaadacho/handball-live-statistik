@@ -3,7 +3,8 @@ import 'game_source.dart';
 import 'models.dart';
 import 'ticker_rules.dart';
 
-/// Plays the server for the demo: TV Mettmann against HSG Hilden, game 17.
+/// Plays the server for the demo: TV Mettmann against HSG Hilden,
+/// game 17 running and game 18 before kick-off.
 ///
 /// It keeps the game in memory and changes it as the real server would:
 /// the clock runs on (ADR-003), rules are checked (R1–R7), score and
@@ -18,6 +19,11 @@ class DemoGameSource implements GameSource {
   static const teamCode = 'k7Qp2xVz9LmA4tRb';
   static const tickerCode = 'x9Fw3cNs7Ke2Hy5D';
 
+  /// Game 18 has not started yet: the ticker sets up the lineup (E5.1).
+  static const nextGameId = 18;
+  static const nextTickerCode = 'Pq4Lm8Rt2Wx6Zc1V';
+  static const _tickerCodes = {gameId: tickerCode, nextGameId: nextTickerCode};
+
   static const mettmann = demoMettmann;
   static const hilden = demoHilden;
   static const game = demoGame;
@@ -26,11 +32,14 @@ class DemoGameSource implements GameSource {
   /// Set to false to see how the pages behave without a connection (L1.1, E1.6).
   bool online = true;
 
-  GameState _state = demoState;
+  final Map<int, GameState> _states = {
+    gameId: demoState,
+    nextGameId: demoNextState,
+  };
 
   final DateTime Function() _clock;
 
-  /// When [_state] was last brought up to date.
+  /// When [_states] were last brought up to date.
   late DateTime _since;
   int _nextNumber = 7;
 
@@ -43,7 +52,7 @@ class DemoGameSource implements GameSource {
   };
 
   @override
-  Future<Game?> loadGame(int id) async => id == gameId ? game : null;
+  Future<Game?> loadGame(int id) async => _states[id]?.game;
 
   @override
   Future<Team?> loadTeamByCode(String code) async =>
@@ -51,13 +60,13 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<bool> isTickerCode(int id, String code) async =>
-      id == gameId && code == tickerCode;
+      _tickerCodes[id] == code;
 
   @override
   Future<GameState?> loadState(int id) async {
     if (!online) throw StateError('Keine Verbindung');
-    if (id != gameId) return null;
-    return _now();
+    if (!_states.containsKey(id)) return null;
+    return _now(id);
   }
 
   @override
@@ -103,7 +112,7 @@ class DemoGameSource implements GameSource {
           clockRunning: false);
     }
     if (kind.isPunishment) next = _punish(next, kind, side, player!);
-    _state = next;
+    _states[id] = next;
     return event;
   }
 
@@ -128,7 +137,7 @@ class DemoGameSource implements GameSource {
           timeouts: {...s.timeouts, event.side: s.timeouts[event.side]! - 1});
     }
     if (event.kind.isPunishment) next = _forgive(next, event);
-    _state = next;
+    _states[id] = next;
   }
 
   @override
@@ -161,7 +170,7 @@ class DemoGameSource implements GameSource {
       field[0] = inPlayerId;
       keepers[side] = inPlayerId;
     }
-    _state = s.copyWith(
+    _states[id] = s.copyWith(
         field: {...s.field, side: field},
         bench: {...s.bench, side: bench},
         goalkeepers: keepers);
@@ -183,7 +192,7 @@ class DemoGameSource implements GameSource {
     final place = field.indexOf(playerId);
     field[place] = field[0];
     field[0] = playerId;
-    _state = s.copyWith(
+    _states[id] = s.copyWith(
         field: {...s.field, side: field},
         goalkeepers: _keepers(s)..[side] = playerId);
   }
@@ -192,16 +201,106 @@ class DemoGameSource implements GameSource {
   Future<void> toggleClock(int id, String code) async {
     final s = _forTicker(id, code);
     if (s.ended) throw const RejectedAction('Das Spiel ist beendet.');
-    _state = s.copyWith(clockRunning: !s.clockRunning);
+    final linedUp = Side.values.every((side) => !s.field[side]!.contains(null));
+    if (!s.started && !linedUp) {
+      throw const RejectedAction('Bitte zuerst beide Teams aufstellen.');
+    }
+    _states[id] = s.copyWith(clockRunning: !s.clockRunning);
   }
+
+  @override
+  Future<void> setLineup(int id, String code, Side side, String goalkeeperId,
+      List<String> fieldPlayerIds) async {
+    final s = _forTicker(id, code);
+    if (s.started) {
+      throw const RejectedAction('Nach dem Anpfiff bitte wechseln.');
+    }
+    final lineup = [goalkeeperId, ...fieldPlayerIds];
+    if (fieldPlayerIds.length != 6 || lineup.toSet().length != 7) {
+      throw const RejectedAction(
+          'Bitte 7 verschiedene Spieler aufstellen: 1 im Tor, 6 im Feld.');
+    }
+    final report = s.reportOf(side);
+    _states[id] = s.copyWith(
+      field: {...s.field, side: lineup},
+      bench: {
+        ...s.bench,
+        side: [
+          for (final p in report)
+            if (!lineup.contains(p)) p
+        ]
+      },
+      goalkeepers: _keepers(s)..[side] = goalkeeperId,
+      matchReport: _reports(s),
+    );
+  }
+
+  @override
+  Future<void> addToMatchReport(
+      int id, String code, Side side, String playerId) async {
+    final s = _forTicker(id, code);
+    _checkLateRegistration(s, side);
+    if (s.reportOf(side).contains(playerId)) {
+      throw const RejectedAction('Der Spieler steht schon im Spielbericht.');
+    }
+    _states[id] = _onBench(s, side, playerId);
+  }
+
+  @override
+  Future<Player> addSquadPlayer(int id, String code, Side side, int number,
+      String firstName, String lastName) async {
+    final s = _forTicker(id, code);
+    _checkLateRegistration(s, side);
+    final team = s.game.team(side);
+    if (team.players.any((p) => p.number == number)) {
+      throw RejectedAction('Die Nummer $number ist schon vergeben.');
+    }
+    final player = Player(
+        id: '${team.id}-$number',
+        number: number,
+        firstName: firstName,
+        lastName: lastName);
+    final withPlayer =
+        s.copyWith(game: s.game.withTeam(side, team.withPlayer(player)));
+    _states[id] = _onBench(withPlayer, side, player.id);
+    return player;
+  }
+
+  /// S1.4: at most 16 players per team on the match report.
+  static void _checkLateRegistration(GameState s, Side side) {
+    if (s.ended) throw const RejectedAction('Das Spiel ist beendet.');
+    if (s.reportOf(side).length >= 16) {
+      throw const RejectedAction('Im Spielbericht stehen schon 16 Spieler.');
+    }
+  }
+
+  /// [playerId] joins the match report and sits on the bench.
+  static GameState _onBench(GameState s, Side side, String playerId) =>
+      s.copyWith(
+        bench: {
+          ...s.bench,
+          side: [...s.bench[side]!, playerId]
+        },
+        matchReport: _reports(s)..[side] = [...s.reportOf(side), playerId],
+      );
+
+  /// The match reports of both teams, as a map that may be changed.
+  static Map<Side, List<String>> _reports(GameState s) =>
+      {for (final side in Side.values) side: s.reportOf(side)};
 
   /// The current state, with the clock moved on since the last call.
   ///
   /// A player whose 2 minutes are over goes back to the bench (E5.4).
-  GameState _now() {
+  GameState _now(int id) {
     final seconds = _clock().difference(_since).inSeconds;
     _since = _since.add(Duration(seconds: seconds));
-    final before = _state;
+    for (final game in _states.keys.toList()) {
+      _states[game] = _advanced(_states[game]!, seconds);
+    }
+    return _states[id]!;
+  }
+
+  GameState _advanced(GameState before, int seconds) {
     var next = before.advancedBy(seconds);
     for (final p in before.penalties) {
       final over =
@@ -213,16 +312,16 @@ class DemoGameSource implements GameSource {
         });
       }
     }
-    return _state = next;
+    return next;
   }
 
   /// Checks connection and ticker code like the server would (ADR-005).
   GameState _forTicker(int id, String code) {
     if (!online) throw StateError('Keine Verbindung');
-    if (id != gameId || code != tickerCode) {
+    if (_tickerCodes[id] != code) {
       throw const RejectedAction('Dieser Ticker-Link ist ungültig.');
     }
-    return _now();
+    return _now(id);
   }
 
   /// 2 minutes and red take the player off the field and the team plays

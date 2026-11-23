@@ -127,8 +127,8 @@ class _TeamColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Row(
-          mainAxisSize: MainAxisSize.min,
+        // Wrap instead of Row: on a narrow board the dots may break the line.
+        Wrap(
           children: [
             for (var i = 0; i < 3; i++)
               Container(

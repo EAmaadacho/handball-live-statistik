@@ -76,13 +76,26 @@ enum CardMark { yellow, red }
 /// Example: Nico (8) of HSG Hilden has 1:22 left → label "8", 82 seconds.
 class Penalty {
   const Penalty(
-      {required this.side, required this.label, required this.secondsLeft});
+      {required this.side,
+      required this.label,
+      required this.secondsLeft,
+      this.playerId});
 
   final Side side;
 
   /// Shirt number of a player or letter of an official, e.g. "8" or "A".
   final String label;
   final int secondsLeft;
+
+  /// The player who comes back to the bench when the time is up.
+  /// Null after a red card: the team waits 2 minutes, the player stays out (L3.3).
+  final String? playerId;
+
+  Penalty after(int seconds) => Penalty(
+      side: side,
+      label: label,
+      secondsLeft: secondsLeft - seconds,
+      playerId: playerId);
 }
 
 enum EventKind {
@@ -101,11 +114,32 @@ enum EventKind {
 
   /// Shown in the event history, e.g. "Tor".
   final String label;
+
+  /// Shots and technical faults: only for players on the field (R7).
+  bool get needsPlayerOnField => const {
+        goal,
+        miss,
+        save,
+        sevenMeterGoal,
+        sevenMeterMiss,
+        technicalFault
+      }.contains(this);
+
+  /// Yellow, 2 minutes and red: also for players on the bench (R7).
+  bool get isPunishment =>
+      const {yellowCard, twoMinutes, redCard}.contains(this);
+
+  bool get isGoal => this == goal || this == sevenMeterGoal;
 }
 
 /// One entry of the event history, e.g. 38:12 Tor · 7 Max Mustermann → 14:12.
+///
+/// A save belongs to the shooter whose shot was saved (E1.3, R5):
+/// "Parade · 3 Jan Vogel" counts as a save for Mettmann's goalkeeper.
 class GameEvent {
   const GameEvent({
+    required this.number,
+    this.playerId,
     required this.clockSeconds,
     required this.kind,
     required this.side,
@@ -114,6 +148,11 @@ class GameEvent {
     required this.awayGoals,
   });
 
+  /// Given by the server, used to delete the event (E2).
+  final int number;
+
+  /// Null for a timeout, which belongs to the team.
+  final String? playerId;
   final int clockSeconds;
   final EventKind kind;
   final Side side;
@@ -158,6 +197,20 @@ class PlayerStats {
   final int yellowCards;
   final int twoMinutes;
   final int redCards;
+
+  /// These numbers plus [other] times [times]; times -1 takes it away again.
+  PlayerStats plus(PlayerStats other, [int times = 1]) => PlayerStats(
+        goals: goals + other.goals * times,
+        shots: shots + other.shots * times,
+        sevenMeterGoals: sevenMeterGoals + other.sevenMeterGoals * times,
+        sevenMeterShots: sevenMeterShots + other.sevenMeterShots * times,
+        saves: saves + other.saves * times,
+        goalsAgainst: goalsAgainst + other.goalsAgainst * times,
+        technicalFaults: technicalFaults + other.technicalFaults * times,
+        yellowCards: yellowCards + other.yellowCards * times,
+        twoMinutes: twoMinutes + other.twoMinutes * times,
+        redCards: redCards + other.redCards * times,
+      );
 }
 
 /// Everything the scoreboard, the court and the bench show at one moment.
@@ -210,30 +263,56 @@ class GameState {
 
   int get half => clockSeconds < game.halfMinutes * 60 ? 1 : 2;
 
+  /// Before kick-off the clock stands at 0:00 (R4.1).
+  bool get started => clockRunning || clockSeconds > 0;
+
+  /// The goalkeeper in goal right now, or null for an empty goal (E1.2, E1.5).
+  String? goalkeeperOf(Side side) {
+    final id = field[side]![0];
+    return id != null && game.team(side).player(id).isGoalkeeper ? id : null;
+  }
+
+  /// Players of [side] on the field, without empty places.
+  List<String> onField(Side side) => field[side]!.whereType<String>().toList();
+
+  /// The same state with some values changed.
+  GameState copyWith({
+    Map<Side, int>? goals,
+    int? clockSeconds,
+    bool? clockRunning,
+    Map<Side, int>? timeouts,
+    Map<Side, List<String?>>? field,
+    Map<Side, List<String>>? bench,
+    List<Penalty>? penalties,
+    Map<String, CardMark>? cards,
+    Map<String, PlayerStats>? stats,
+    List<GameEvent>? events,
+  }) =>
+      GameState(
+        game: game,
+        goals: goals ?? this.goals,
+        clockSeconds: clockSeconds ?? this.clockSeconds,
+        clockRunning: clockRunning ?? this.clockRunning,
+        timeouts: timeouts ?? this.timeouts,
+        field: field ?? this.field,
+        bench: bench ?? this.bench,
+        penalties: penalties ?? this.penalties,
+        cards: cards ?? this.cards,
+        stats: stats ?? this.stats,
+        events: events ?? this.events,
+        halftimeScore: halftimeScore,
+        ended: ended,
+      );
+
   /// The same state [seconds] later: clock and penalties have moved on.
   GameState advancedBy(int seconds) {
     if (!clockRunning || seconds <= 0) return this;
-    return GameState(
-      game: game,
-      goals: goals,
+    return copyWith(
       clockSeconds: clockSeconds + seconds,
-      clockRunning: clockRunning,
-      timeouts: timeouts,
-      field: field,
-      bench: bench,
       penalties: [
         for (final p in penalties)
-          if (p.secondsLeft > seconds)
-            Penalty(
-                side: p.side,
-                label: p.label,
-                secondsLeft: p.secondsLeft - seconds),
+          if (p.secondsLeft > seconds) p.after(seconds),
       ],
-      cards: cards,
-      stats: stats,
-      events: events,
-      halftimeScore: halftimeScore,
-      ended: ended,
     );
   }
 }

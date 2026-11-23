@@ -1,0 +1,104 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:test/test.dart';
+import 'package:test_process/test_process.dart';
+
+import '../../bin/server.dart';
+
+/// The answer of the server: HTTP status and JSON body.
+typedef Answer = (int status, Map<String, dynamic> json);
+
+/// The real server as its own process, with its own empty data folder.
+///
+/// Acceptance tests use only what a browser can use: HTTP requests.
+/// Example: `await server.post('/teams', body: newTeam())` answers
+/// `(201, {"team": {...}, "code": "k7Qm2xPa9RtB4wZe"})`.
+class RunningServer {
+  final TestProcess _process;
+  final String _host;
+  final Directory dataDir;
+
+  RunningServer._(this._process, this._host, this.dataDir);
+
+  /// Starts the server on a free port. Pass [dataDir] to start it again
+  /// on the data of an earlier run, like after a restart.
+  static Future<RunningServer> start({Directory? dataDir}) async {
+    final dir = dataDir ?? Directory.systemTemp.createTempSync('acceptance_');
+    final process = await TestProcess.start(
+      'dart',
+      ['run', 'bin/server.dart'],
+      environment: {EnvVariables.port: '0', EnvVariables.dataDir: dir.path},
+    );
+    final line = await process.stdout.next.timeout(const Duration(seconds: 30));
+    final port = RegExp(r'port (\d+)').firstMatch(line)!.group(1);
+    return RunningServer._(process, 'http://127.0.0.1:$port', dir);
+  }
+
+  /// Stops the process but keeps the data folder.
+  Future<void> stop() => _process.kill();
+
+  /// Stops the process and deletes the data folder.
+  Future<void> stopAndClean() async {
+    await stop();
+    dataDir.deleteSync(recursive: true);
+  }
+
+  Future<Answer> get(String path) => _send('GET', path);
+
+  Future<Answer> post(String path, {Object? body, String? code}) =>
+      _send('POST', path, body: body, code: code);
+
+  Future<Answer> put(String path, {Object? body, String? code}) =>
+      _send('PUT', path, body: body, code: code);
+
+  Future<Answer> delete(String path, {String? code}) =>
+      _send('DELETE', path, code: code);
+
+  Future<Answer> _send(String method, String path,
+      {Object? body, String? code}) async {
+    final request = http.Request(method, Uri.parse('$_host$path'));
+    if (body != null) request.body = jsonEncode(body);
+    if (code != null) request.headers['X-Team-Code'] = code;
+    final response = await http.Response.fromStream(await request.send());
+    return (
+      response.statusCode,
+      jsonDecode(response.body) as Map<String, dynamic>
+    );
+  }
+}
+
+/// Starts a fresh server before each test of the file and removes it after.
+RunningServer Function() useRunningServer() {
+  late RunningServer server;
+  setUp(() async => server = await RunningServer.start());
+  tearDown(() => server.stopAndClean());
+  return () => server;
+}
+
+/// Body of POST /teams; by default TV Mettmann Männer with short code TVM.
+Map<String, Object> newTeam({
+  String club = 'TV Mettmann',
+  String ageGroup = 'men',
+  int teamNumber = 1,
+  String shortCode = 'TVM',
+}) =>
+    {
+      'name': {'club': club, 'ageGroup': ageGroup, 'teamNumber': teamNumber},
+      'shortCode': shortCode,
+    };
+
+/// Body of POST/PUT .../players; by default 7 Max Mustermann, field player.
+Map<String, Object> aPlayer({
+  int number = 7,
+  String firstName = 'Max',
+  String lastName = 'Mustermann',
+  String position = 'fieldPlayer',
+}) =>
+    {
+      'number': number,
+      'firstName': firstName,
+      'lastName': lastName,
+      'position': position,
+    };

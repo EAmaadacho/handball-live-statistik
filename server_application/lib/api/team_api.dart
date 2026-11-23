@@ -85,9 +85,7 @@ class TeamApi {
   }) =>
       withErrorAnswers(() async {
         final team = _find(teamId);
-        if (request.headers[codeHeader] != team.code) {
-          throw const HttpError(403, 'Dieser Link ist ungültig.');
-        }
+        requireCode(request, codeHeader, team.code);
         final changed = await change(team);
         _teams.save(teamId, changed);
         return jsonResponse(toApiTeam(teamId, changed).toJson(),

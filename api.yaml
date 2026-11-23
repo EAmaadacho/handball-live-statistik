@@ -9,6 +9,8 @@ info:
 tags:
   - name: health
     description: Is the server up?
+  - name: teams
+    description: Teams and their squads (T1, T2)
 paths:
   /health:
     get:
@@ -23,7 +25,169 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /teams:
+    post:
+      tags:
+        - teams
+      summary: Creates a team and returns its secret code once (T1)
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewTeam'
+      responses:
+        '201':
+          description: The new team with its secret code for the team link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedTeam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /teams/{teamId}:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+    get:
+      tags:
+        - teams
+      summary: Returns a team with its squad, without the secret code
+      operationId: getTeam
+      responses:
+        '200':
+          description: The team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /teams/{teamId}/players:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+      - $ref: '#/components/parameters/TeamCode'
+    post:
+      tags:
+        - teams
+      summary: Adds a player to the squad (T2, T2.1)
+      operationId: addPlayer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerData'
+      responses:
+        '201':
+          description: The team with the new player
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /teams/{teamId}/players/{playerId}:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+      - $ref: '#/components/parameters/TeamCode'
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags:
+        - teams
+      summary: Changes a player of the squad; the id stays (T2)
+      operationId: updatePlayer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerData'
+      responses:
+        '200':
+          description: The team with the changed player
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+    delete:
+      tags:
+        - teams
+      summary: Removes a player from the squad; old games keep him (T2)
+      operationId: removePlayer
+      responses:
+        '200':
+          description: The team without the player
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
 components:
+  parameters:
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+    TeamCode:
+      name: X-Team-Code
+      in: header
+      required: true
+      description: The secret code from the team link (T1.2, ADR-005)
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: The request body is not valid JSON or misses a field
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The team code is missing or wrong (T1.2)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: There is no team with this id (an unknown player gives 409)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RuleViolation:
+      description: A rule rejects the change, the message says why in German
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Health:
       description: 'State of the server, for example status ok'
@@ -32,4 +196,133 @@ components:
         - status
       properties:
         status:
+          type: string
+    Error:
+      description: 'A German message for the user, e.g. "Die Nummer 7 ist schon vergeben."'
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+    AgeGroup:
+      description: The age group as in nuLiga, e.g. men = "Männer", femaleB = "weibliche Jugend B"
+      type: string
+      enum:
+        - men
+        - women
+        - maleA
+        - maleB
+        - maleC
+        - maleD
+        - maleE
+        - femaleA
+        - femaleB
+        - femaleC
+        - femaleD
+        - femaleE
+        - mixedE
+        - mixedF
+    TeamName:
+      description: Club, age group and team number, e.g. TV Mettmann, men, 2 = "TV Mettmann Männer II"
+      type: object
+      required:
+        - club
+        - ageGroup
+        - teamNumber
+      properties:
+        club:
+          type: string
+        ageGroup:
+          $ref: '#/components/schemas/AgeGroup'
+        teamNumber:
+          type: integer
+          minimum: 1
+          maximum: 9
+    NewTeam:
+      description: What the team manager enters to create a team (T1)
+      type: object
+      required:
+        - name
+        - shortCode
+      properties:
+        name:
+          $ref: '#/components/schemas/TeamName'
+        shortCode:
+          type: string
+          description: 2 to 4 characters, e.g. TVM
+    Position:
+      type: string
+      enum:
+        - fieldPlayer
+        - goalkeeper
+    PlayerData:
+      description: What the team manager enters for a player, e.g. 7 Max Mustermann
+      type: object
+      required:
+        - number
+        - firstName
+        - lastName
+        - position
+      properties:
+        number:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        position:
+          $ref: '#/components/schemas/Position'
+    Player:
+      type: object
+      required:
+        - id
+        - number
+        - firstName
+        - lastName
+        - position
+      properties:
+        id:
+          type: string
+        number:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        position:
+          $ref: '#/components/schemas/Position'
+    Team:
+      description: A team with its squad, as everyone may read it (without the code)
+      type: object
+      required:
+        - id
+        - name
+        - displayName
+        - shortCode
+        - players
+      properties:
+        id:
+          type: string
+        name:
+          $ref: '#/components/schemas/TeamName'
+        displayName:
+          type: string
+          description: e.g. "TV Mettmann Männer II"
+        shortCode:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+    CreatedTeam:
+      description: The new team and its secret code; the code is only sent here (T1.2)
+      type: object
+      required:
+        - team
+        - code
+      properties:
+        team:
+          $ref: '#/components/schemas/Team'
+        code:
           type: string

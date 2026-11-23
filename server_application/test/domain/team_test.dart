@@ -6,31 +6,24 @@ import 'builders.dart';
 
 void main() {
   group('T1 create a team', () {
-    test('T1 creates TV Mettmann with an empty squad', () {
+    test('T1 creates TV Mettmann Männer with an empty squad', () {
       final team =
-          Team.create(name: 'TV Mettmann', shortCode: 'TVM', code: 'abc123');
+          Team.create(name: mettmannName, shortCode: 'TVM', code: 'abc123');
 
-      expect(team.name, 'TV Mettmann');
+      expect(team.name.display, 'TV Mettmann Männer');
       expect(team.shortCode, 'TVM');
       expect(team.code, 'abc123');
       expect(team.squad, isEmpty);
     });
 
-    test('T1 rejects an empty team name', () {
-      expect(
-        () => Team.create(name: '  ', shortCode: 'TVM', code: 'abc123'),
-        throwsRuleViolation('Bitte einen Teamnamen eingeben.'),
-      );
-    });
-
     test('T1 rejects a short code with 1 or 5 characters', () {
       expect(
-        () => Team.create(name: 'TV Mettmann', shortCode: 'T', code: 'abc123'),
+        () => Team.create(name: mettmannName, shortCode: 'T', code: 'abc123'),
         throwsRuleViolation('Das Kürzel braucht 2 bis 4 Zeichen.'),
       );
       expect(
-        () => Team.create(
-            name: 'TV Mettmann', shortCode: 'TVMET', code: 'abc123'),
+        () =>
+            Team.create(name: mettmannName, shortCode: 'TVMET', code: 'abc123'),
         throwsRuleViolation('Das Kürzel braucht 2 bis 4 Zeichen.'),
       );
     });

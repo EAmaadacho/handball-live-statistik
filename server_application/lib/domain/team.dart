@@ -1,5 +1,6 @@
 import 'player.dart';
 import 'rule_violation.dart';
+import 'team_name.dart';
 
 /// A team with its squad (T1, T2).
 ///
@@ -10,7 +11,7 @@ import 'rule_violation.dart';
 /// The [code] is the secret part of the team link (T1.2). The domain does
 /// not create it; the storage layer does and passes it in.
 class Team {
-  final String name;
+  final TeamName name;
   final String shortCode;
   final String code;
   final String? logoRef;
@@ -26,17 +27,15 @@ class Team {
 
   /// Creates a team with an empty squad.
   ///
-  /// Example: `Team.create(name: 'TV Mettmann', shortCode: 'TVM', code: 'abc123')`.
-  /// Rejects an empty name and a short code that is not 2 to 4 characters.
+  /// Example: TV Mettmann Männer with short code "TVM" and code "abc123".
+  /// Rejects a short code that is not 2 to 4 characters; the [name] checks
+  /// itself, see [TeamName].
   factory Team.create({
-    required String name,
+    required TeamName name,
     required String shortCode,
     required String code,
     String? logoRef,
   }) {
-    if (name.trim().isEmpty) {
-      throw const RuleViolation('Bitte einen Teamnamen eingeben.');
-    }
     final length = shortCode.trim().length;
     if (length < 2 || length > 4) {
       throw const RuleViolation('Das Kürzel braucht 2 bis 4 Zeichen.');

@@ -33,7 +33,7 @@ void main() {
       final game = timeout(secondHalf, 35).startClock(at(36));
 
       expect(() => timeout(game, 40),
-          throwsRuleViolation('TV Mettmann hat keine Auszeit mehr.'));
+          throwsRuleViolation('TV Mettmann Männer hat keine Auszeit mehr.'));
     });
 
     test('R1_2 rejects a third timeout in the first half', () {

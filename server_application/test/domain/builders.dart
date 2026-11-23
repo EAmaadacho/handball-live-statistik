@@ -6,6 +6,7 @@ import 'package:server_application/domain/game_event.dart';
 import 'package:server_application/domain/game_team.dart';
 import 'package:server_application/domain/player.dart';
 import 'package:server_application/domain/team.dart';
+import 'package:server_application/domain/team_name.dart';
 
 /// Test data with sensible defaults. A test only names the values it cares about.
 
@@ -41,8 +42,11 @@ Player nora() => aPlayer(
     );
 
 /// TV Mettmann without players.
+/// TV Mettmann Männer, the first men's team.
+final mettmannName = TeamName(club: 'TV Mettmann', ageGroup: AgeGroup.men);
+
 Team anEmptyTeam() =>
-    Team.create(name: 'TV Mettmann', shortCode: 'TVM', code: 'abc123');
+    Team.create(name: mettmannName, shortCode: 'TVM', code: 'abc123');
 
 /// TV Mettmann with Max (7), Lisa (12) and Nora (1). Tom is not in it yet.
 Team mettmann() =>
@@ -90,7 +94,7 @@ Player jan() => _field('Jan', 5, 'Becker');
 /// TV Mettmann for one game. Starting: Nora in goal; Max, Lisa, Ben, Paul,
 /// Finn, Leon in the field. Bench: Tom and goalkeeper Lea.
 GameTeam mettmannInGame() => GameTeam(
-      name: 'TV Mettmann',
+      name: mettmannName,
       shortCode: 'TVM',
       squad: [
         nora(),
@@ -108,7 +112,7 @@ GameTeam mettmannInGame() => GameTeam(
 /// HSG Hilden with a game squad of its own (S1.1). Starting: Kai in goal;
 /// Jan, Ole, Tim, Nils, Erik, Moritz in the field. Bench: Lars.
 GameTeam hilden() => GameTeam(
-      name: 'HSG Hilden',
+      name: TeamName(club: 'HSG Hilden', ageGroup: AgeGroup.men),
       shortCode: 'HSG',
       squad: [
         _keeper('Kai', 1, 'Becker'),

@@ -54,7 +54,7 @@ class Team {
   /// Example: adding Tom (No. 9) works; adding a second No. 7 next to Max
   /// fails with "Die Nummer 7 ist schon vergeben." (T2.1).
   Team addPlayer(Player player) {
-    _checkPlayer(player, otherPlayers: squad);
+    checkPlayer(player, otherPlayers: squad);
     return _withSquad([...squad, player]);
   }
 
@@ -65,7 +65,7 @@ class Team {
   Team updatePlayer(Player player) {
     _requirePlayer(player.id);
     final others = squad.where((p) => p.id != player.id).toList();
-    _checkPlayer(player, otherPlayers: others);
+    checkPlayer(player, otherPlayers: others);
     return _withSquad([
       for (final p in squad) p.id == player.id ? player : p,
     ]);
@@ -91,19 +91,6 @@ class Team {
   void _requirePlayer(String playerId) {
     if (playerById(playerId) == null) {
       throw const RuleViolation('Spieler nicht gefunden.');
-    }
-  }
-
-  static void _checkPlayer(Player player,
-      {required List<Player> otherPlayers}) {
-    if (player.number < 1 || player.number > 99) {
-      throw const RuleViolation('Nummern gehen von 1 bis 99.');
-    }
-    if (otherPlayers.any((p) => p.number == player.number)) {
-      throw RuleViolation('Die Nummer ${player.number} ist schon vergeben.');
-    }
-    if (player.firstName.trim().isEmpty || player.lastName.trim().isEmpty) {
-      throw const RuleViolation('Bitte Vor- und Nachnamen eingeben.');
     }
   }
 

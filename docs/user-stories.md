@@ -41,10 +41,10 @@ Beispiel für alle Stories: TV Mettmann (Heim) gegen HSG Hilden. Im Kader des TV
 ## S – Spiel anlegen
 
 - <a id="s1"></a>**S1 (Muss)** Als Teamverantwortliche lege ich ein Spiel an: Gegner (Verein, Mannschaft und Nummer wie beim Team), Datum, Halbzeitlänge (Standard 30 Min., z. B. 25 Min. für die B-Jugend).
-  - <a id="s1-1"></a>S1.1 Für einen nicht registrierten Gegner pflege ich einen Spielkader mit Nummer und Name (Pflicht, mindestens 7 Spieler, davon 1 Torwart), z. B. „5 Jan Becker“. Das geht beim Anlegen oder im Ticker vor dem Anpfiff. Der Spielkader gilt nur für dieses Spiel.
+  - <a id="s1-1"></a>S1.1 Für einen nicht registrierten Gegner pflege ich einen Spielkader mit Nummer und Name (Pflicht, mindestens 7 Spieler), z. B. „5 Jan Becker“. Das geht beim Anlegen oder im Ticker vor dem Anpfiff. Der Spielkader gilt nur für dieses Spiel.
   - <a id="s1-2"></a>S1.2 Nach dem Anlegen bekomme ich einen Ticker-Link und einen öffentlichen Zuschauer-Link.
   - <a id="s1-3"></a>S1.3 In der Teamverwaltung sehe ich alle Spiele mit Status (geplant, läuft, beendet) und finde die Links dort wieder.
-  - <a id="s1-4"></a>S1.4 Im Spielbericht stehen höchstens 16 Spieler je Team. Im Ticker melde ich bis zu dieser Grenze nach, z. B. wenn Tom zu spät kommt. Ein 17. Spieler wird abgelehnt.
+  - <a id="s1-4"></a>S1.4 Im Spielbericht stehen höchstens 16 Spieler je Team. Hat der Kader mehr als 16 Spieler, stehen zuerst die 16 mit den niedrigsten Nummern darin; vor dem Anpfiff nehme ich Spieler heraus. Im Ticker melde ich bis zu dieser Grenze nach, auch während des Spiels, z. B. wenn Tom zu spät kommt. Ein 17. Spieler wird abgelehnt.
 - <a id="s2"></a>**S2 (Kann)** Ist der Gegner ein registriertes Team, wähle ich es aus und sein Kader wird übernommen.
   - <a id="s2-1"></a>S2.1 Gegen einen registrierten Gegner legt nur das Heimteam das Spiel an.
   - <a id="s2-2"></a>S2.2 Der Gegner bestätigt das Spiel in seiner Teamverwaltung. Erst dann zählt es für seine Saisonstatistik ([T5](#t5)). Ohne Bestätigung läuft der Ticker ganz normal.

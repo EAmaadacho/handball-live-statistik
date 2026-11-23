@@ -23,7 +23,9 @@ class Game {
   final List<GameEvent> events;
   final int nextEventNumber;
 
-  Game._({
+  /// A game as it was saved, e.g. in data/games/<id>.json (ADR-004).
+  /// Only the storage uses this; everything else starts with [Game.create].
+  Game.restore({
     required this.home,
     required this.away,
     required this.clock,
@@ -34,12 +36,18 @@ class Game {
   }) : events = List.unmodifiable(events);
 
   /// A new game before kick-off, e.g. TV Mettmann against HSG Hilden.
+  ///
+  /// A half lasts 10 to 30 minutes, e.g. 25 for a B-Jugend game (S1).
   factory Game.create({
     required GameTeam home,
     required GameTeam away,
     Duration halfLength = const Duration(minutes: 30),
   }) {
-    return Game._(
+    if (halfLength < const Duration(minutes: 10) ||
+        halfLength > const Duration(minutes: 30)) {
+      throw const RuleViolation('Eine Halbzeit dauert 10 bis 30 Minuten.');
+    }
+    return Game.restore(
       home: home,
       away: away,
       clock: GameClock.initial(halfLength: halfLength),
@@ -51,6 +59,45 @@ class Game {
   }
 
   GameTeam teamOf(Side side) => side == Side.home ? home : away;
+
+  // ---------------------------------------------------------------------
+  // Match report (S1.4)
+  // ---------------------------------------------------------------------
+
+  /// Adds [player] to the match report of [side], before or after kick-off.
+  ///
+  /// Example: Tom arrives late and is added at 12:00; he sits on the bench.
+  /// Rejected with 16 players already in the report, a taken number or
+  /// after the end of the game.
+  Game addToMatchReport(Side side, Player player) {
+    if (clock.phase == ClockPhase.finished) {
+      throw const RuleViolation('Das Spiel ist beendet.');
+    }
+    final team = teamOf(side);
+    if (team.hasPlayer(player.id)) {
+      throw RuleViolation('${player.firstName} steht schon im Spielbericht.');
+    }
+    if (team.squad.length >= rules.maxMatchReport) {
+      throw const RuleViolation('Im Spielbericht stehen schon 16 Spieler.');
+    }
+    checkPlayer(player, otherPlayers: team.squad);
+    return _withTeam(side, team.withPlayer(player));
+  }
+
+  /// Takes a player out of the match report before kick-off, e.g. to make
+  /// room for Tom when the squad has more than 16 players (S1.4).
+  Game removeFromMatchReport(Side side, String playerId) {
+    if (clock.phase != ClockPhase.notStarted) {
+      throw const RuleViolation(
+          'Nach dem Anpfiff bleibt der Spieler im Spielbericht.');
+    }
+    _checkInSquad(side, playerId);
+    final lineup = side == Side.home ? homeStartingLineup : awayStartingLineup;
+    if (lineup != null && lineup.isOnField(playerId)) {
+      throw const RuleViolation('Der Spieler steht in der Aufstellung.');
+    }
+    return _withTeam(side, teamOf(side).withoutPlayer(playerId));
+  }
 
   // ---------------------------------------------------------------------
   // Lineup and substitutions (E5)
@@ -420,6 +467,9 @@ class Game {
         events.where((e) => e.isGoalFor(Side.away)).length,
       );
 
+  Game _withTeam(Side side, GameTeam team) =>
+      side == Side.home ? _copy(home: team) : _copy(away: team);
+
   Game _append(GameEvent event, {GameClock? clock}) => _copy(
         clock: clock,
         events: [...events, event],
@@ -427,15 +477,17 @@ class Game {
       );
 
   Game _copy({
+    GameTeam? home,
+    GameTeam? away,
     GameClock? clock,
     Lineup? homeStartingLineup,
     Lineup? awayStartingLineup,
     List<GameEvent>? events,
     int? nextEventNumber,
   }) {
-    return Game._(
-      home: home,
-      away: away,
+    return Game.restore(
+      home: home ?? this.home,
+      away: away ?? this.away,
       clock: clock ?? this.clock,
       homeStartingLineup: homeStartingLineup ?? this.homeStartingLineup,
       awayStartingLineup: awayStartingLineup ?? this.awayStartingLineup,

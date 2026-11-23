@@ -8,6 +8,9 @@ import 'rule_violation.dart';
 /// How long a two-minute penalty or the team penalty after red lasts.
 const penaltyLength = Duration(minutes: 2);
 
+/// At most this many players of one team are in the match report (S1.4).
+const maxMatchReport = 16;
+
 /// At most this many players of one team stand on the field (R7).
 const maxPlayersOnField = 7;
 

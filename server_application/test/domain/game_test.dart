@@ -1,3 +1,4 @@
+import 'package:server_application/domain/game.dart';
 import 'package:server_application/domain/game_event.dart';
 import 'package:server_application/domain/score.dart';
 import 'package:test/test.dart';
@@ -5,6 +6,28 @@ import 'package:test/test.dart';
 import 'builders.dart';
 
 void main() {
+  group('S1 half length', () {
+    test('S1 a B-Jugend game has halves of 25 minutes', () {
+      final game = Game.create(
+          home: mettmannInGame(),
+          away: hilden(),
+          halfLength: const Duration(minutes: 25));
+
+      expect(game.clock.halfLength, time(25));
+    });
+
+    test('S1 rejects halves of 5 and 35 minutes', () {
+      for (final minutes in [5, 35]) {
+        expect(
+            () => Game.create(
+                home: mettmannInGame(),
+                away: hilden(),
+                halfLength: Duration(minutes: minutes)),
+            throwsRuleViolation('Eine Halbzeit dauert 10 bis 30 Minuten.'));
+      }
+    });
+  });
+
   group('E1 record events', () {
     test('E1_1 a goal by Max at 11:10 makes it 12:10', () {
       final game =

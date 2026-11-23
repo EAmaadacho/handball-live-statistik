@@ -91,7 +91,8 @@ class Court extends StatelessWidget {
         number: player?.number,
         name: player?.firstName,
         emptyLabel: fieldPlaces[place],
-        isGoalkeeper: player?.isGoalkeeper ?? false,
+        // Whoever is in goal in this game, e.g. Max with a goalkeeper shirt.
+        isGoalkeeper: id != null && state.goalkeeperOf(side) == id,
         selected: selected == (side, place),
         nameColor: colors.lines,
         onTap: onPlaceTap == null ? null : () => onPlaceTap!(side, place),

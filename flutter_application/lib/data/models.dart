@@ -229,6 +229,7 @@ class GameState {
     this.events = const [],
     this.halftimeScore,
     this.ended = false,
+    this.goalkeepers,
   });
 
   final Game game;
@@ -238,6 +239,12 @@ class GameState {
   final int clockSeconds;
   final bool clockRunning;
   final bool ended;
+
+  /// Who is in goal for each team, as the server says (Lineup.goalkeeperId).
+  /// Any player may be goalkeeper in a game (IHF rule 4:7), e.g. Max with a
+  /// goalkeeper shirt. Null for a team = empty goal (E1.5).
+  /// Without this map the squad goalkeeper standing on TH counts.
+  final Map<Side, String?>? goalkeepers;
   final Map<Side, int> timeouts;
   final List<Penalty> penalties;
 
@@ -267,7 +274,11 @@ class GameState {
   bool get started => clockRunning || clockSeconds > 0;
 
   /// The goalkeeper in goal right now, or null for an empty goal (E1.2, E1.5).
+  ///
+  /// Tom standing on TH as extra field player is not a goalkeeper, Max who went
+  /// into goal with a goalkeeper shirt is.
   String? goalkeeperOf(Side side) {
+    if (goalkeepers case final keepers?) return keepers[side];
     final id = field[side]![0];
     return id != null && game.team(side).player(id).isGoalkeeper ? id : null;
   }
@@ -286,6 +297,7 @@ class GameState {
     List<Penalty>? penalties,
     Map<String, CardMark>? cards,
     Map<String, PlayerStats>? stats,
+    Map<Side, String?>? goalkeepers,
     List<GameEvent>? events,
   }) =>
       GameState(
@@ -299,6 +311,7 @@ class GameState {
         penalties: penalties ?? this.penalties,
         cards: cards ?? this.cards,
         stats: stats ?? this.stats,
+        goalkeepers: goalkeepers ?? this.goalkeepers,
         events: events ?? this.events,
         halftimeScore: halftimeScore,
         ended: ended,

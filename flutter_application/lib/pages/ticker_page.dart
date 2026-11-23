@@ -167,8 +167,18 @@ class _TickerPageState extends State<TickerPage> {
     if (ok) _message('Gelöscht: $what');
   }
 
-  Future<void> _substitute(Side side, int place, String inPlayerId) async {
+  /// On the goal place a field player may come in as goalkeeper or as
+  /// extra field player; a squad goalkeeper simply goes in goal (IHF 4:7).
+  Future<void> _substitute(Side side, int place, String inPlayerId,
+      {bool? intoGoal}) async {
     final team = _state!.game.team(side);
+    if (place == 0 &&
+        intoGoal == null &&
+        !team.player(inPlayerId).isGoalkeeper) {
+      setState(() => _swap = null);
+      intoGoal = await chooseGoalRole(context, team.player(inPlayerId));
+      if (intoGoal == null) return;
+    }
     final outId = _state!.field[side]![place];
     final inPlayer = team.player(inPlayerId);
     final what = outId == null
@@ -179,17 +189,30 @@ class _TickerPageState extends State<TickerPage> {
     final ok = await _send(
       what,
       () => _source.substitute(
-          widget.gameId, widget.tickerCode, side, place, inPlayerId),
-      retry: () => _substitute(side, place, inPlayerId),
+          widget.gameId, widget.tickerCode, side, place, inPlayerId,
+          intoGoal: intoGoal),
+      retry: () => _substitute(side, place, inPlayerId, intoGoal: intoGoal),
     );
     if (!ok) return;
-    // A field player in goal leaves the goal empty: a 7th field player,
+    // A field player in goal leaves the goal empty: an extra field player,
     // also while short-handed (E1.5).
     final emptyGoal = _state!.goalkeeperOf(side) == null;
     _message(emptyGoal
         ? '$what\nTor leer: ${team.name} greift mit '
             'Feldspieler statt Torwart an.'
         : what);
+  }
+
+  /// "Ins Tor": Max takes the empty goal and counts as goalkeeper from now on.
+  Future<void> _putInGoal(Side side, String playerId) async {
+    final p = _state!.game.team(side).player(playerId);
+    final what = '${p.number} ${p.firstName} geht ins Tor';
+    final ok = await _send(
+      what,
+      () => _source.putInGoal(widget.gameId, widget.tickerCode, side, playerId),
+      retry: () => _putInGoal(side, playerId),
+    );
+    if (ok) _message('$what und zählt jetzt als Torwart.');
   }
 
   Future<void> _toggleClock() =>
@@ -208,8 +231,11 @@ class _TickerPageState extends State<TickerPage> {
     }
     await _send(
       'Torwechsel',
-      () => _source.putInGoal(widget.gameId, widget.tickerCode, side, keeper,
-          outPlayerId: out),
+      () => out == null
+          ? _source.putInGoal(widget.gameId, widget.tickerCode, side, keeper)
+          : _source.substitute(widget.gameId, widget.tickerCode, side,
+              _state!.field[side]!.indexOf(out), keeper,
+              intoGoal: true),
       retry: () => _askGoalkeeper(side),
     );
   }
@@ -237,6 +263,7 @@ class _TickerPageState extends State<TickerPage> {
     if (choice == null || !mounted) return;
     final kind = choice.kind;
     if (kind != null) return _record(kind, side, playerId);
+    if (choice.intoGoal) return _putInGoal(side, playerId);
     setState(() => _swap = onBench
         ? _Swap(side, benchPlayerId: playerId)
         : _Swap(side, place: place));

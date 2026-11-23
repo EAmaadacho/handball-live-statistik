@@ -45,16 +45,23 @@ abstract class GameSource {
 
   /// Puts [inPlayerId] from the bench on [place]; whoever stood there goes
   /// to the bench (E5.2). Example: place 2 (RL), Tom in → Max to the bench.
-  Future<void> substitute(
-      int gameId, String tickerCode, Side side, int place, String inPlayerId);
-
-  /// Puts [playerId] in goal after the goalkeeper got a penalty (E5.6).
   ///
-  /// A field player moves into goal and leaves their place empty. A goalkeeper
-  /// from the bench comes in for [outPlayerId], whose place stays empty.
+  /// On the goal place (TH) [intoGoal] says whether the player comes in as
+  /// goalkeeper (true) or as extra field player with an empty goal (false).
+  /// Null keeps the squad role: a goalkeeper goes in goal, a field player
+  /// leaves it empty (E1.5, IHF rule 4:7).
+  Future<void> substitute(
+      int gameId, String tickerCode, Side side, int place, String inPlayerId,
+      {bool? intoGoal});
+
+  /// Puts [playerId], who stands on the field, in the empty goal; from then
+  /// on saves and goals against count for them (E5.6, IHF rule 4:7).
+  /// Example: Nora got red, Max goes in goal with a goalkeeper shirt.
+  ///
+  /// A goalkeeper from the bench comes in with [substitute] instead and
+  /// takes the empty goal right away.
   Future<void> putInGoal(
-      int gameId, String tickerCode, Side side, String playerId,
-      {String? outPlayerId});
+      int gameId, String tickerCode, Side side, String playerId);
 
   /// Starts the clock when it stands, stops it when it runs (U1).
   Future<void> toggleClock(int gameId, String tickerCode);

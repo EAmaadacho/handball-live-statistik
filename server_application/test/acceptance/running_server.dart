@@ -61,8 +61,9 @@ class RunningServer {
           {Object? body, String? code, String? tickerCode}) =>
       _send('POST', path, body: body, code: code, tickerCode: tickerCode);
 
-  Future<Answer> put(String path, {Object? body, String? code}) =>
-      _send('PUT', path, body: body, code: code);
+  Future<Answer> put(String path,
+          {Object? body, String? code, String? tickerCode}) =>
+      _send('PUT', path, body: body, code: code, tickerCode: tickerCode);
 
   Future<Answer> delete(String path, {String? code, String? tickerCode}) =>
       _send('DELETE', path, code: code, tickerCode: tickerCode);

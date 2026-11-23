@@ -15,6 +15,9 @@ enum EventType {
   timeout,
   substitution,
 
+  /// A player comes onto a free place, e.g. after a penalty (E5.4).
+  comesOn,
+
   /// A field player on the field moves into the empty goal (E5.7).
   movesIntoGoal,
 }
@@ -30,9 +33,9 @@ enum EventType {
 /// [goalkeeperId] is the opposing goalkeeper on the field at that moment,
 /// stored with goals and saves (E1.2). It is `null` for an empty goal (E1.5).
 /// A substitution stores the player going out in [playerId] and the player
-/// coming in in [incomingPlayerId] (E5.3). Without [playerId] the player
-/// comes in on a free place, e.g. after a penalty has run out.
-/// [incomingInGoal] says whether the incoming player took the goal slot.
+/// coming in in [incomingPlayerId] (E5.3). "Comes on" stores in
+/// [incomingPlayerId] who comes onto a free place, e.g. Max after his
+/// penalty. For both, [incomingInGoal] says whether he took the goal.
 /// "Ins Tor" stores in [playerId] the field player who moves into goal.
 /// A two-minute penalty or a red card stores in [leavingPlayerId] who leaves
 /// the field: the punished player, or a field player for a punished

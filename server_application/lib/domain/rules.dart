@@ -83,6 +83,14 @@ void checkTimeoutAllowed(
   }
 }
 
+/// Substitutions, coming on and "Ins Tor" change the lineup. They have
+/// their own actions and cannot be deleted (E5.2, E5.3).
+bool isLineupChange(EventType type) => const {
+      EventType.substitution,
+      EventType.comesOn,
+      EventType.movesIntoGoal,
+    }.contains(type);
+
 /// Two minutes and red take a player off the field (E5.4, L3.3).
 bool isPenalty(EventType type) =>
     type == EventType.twoMinutes || type == EventType.redCard;

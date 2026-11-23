@@ -157,7 +157,7 @@ void main() {
     test('L3_2 two minutes at 29:00 still run at 30:30 in the second half', () {
       final game = aRunningGame()
           .record(EventType.twoMinutes, Side.home, 'p-max', at(29))
-          .halfTime(at(30))
+          .halfTime()
           .startClock(at(45));
 
       final penalties = game.runningPenalties(at(45, 30));

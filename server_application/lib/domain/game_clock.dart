@@ -109,7 +109,7 @@ class GameClock {
 
   /// Ends the first half. The clock stops at 30:00, even if the ticker
   /// presses it a little earlier, e.g. at 29:50 (U5.1).
-  GameClock halfTime(DateTime now) {
+  GameClock halfTime() {
     if (phase != ClockPhase.firstHalf) {
       throw const RuleViolation('„Halbzeit“ geht nur in der ersten Halbzeit.');
     }

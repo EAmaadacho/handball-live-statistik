@@ -1,3 +1,6 @@
+import 'game_event.dart';
+import 'rules.dart' as rules;
+
 /// Who stands on the field for one team: the goal slot and the field players.
 ///
 /// Example: Nora in goal, Max, Lisa and four more in the field (E5.1).
@@ -17,7 +20,11 @@ class Lineup {
 
   bool isOnField(String playerId) => playerIds.contains(playerId);
 
+  /// Whether a free place is left, i.e. fewer than 7 players on the field.
+  bool get hasFreePlace => playerIds.length < rules.maxPlayersOnField;
+
   /// Whether the goal is free once [outId] has left, e.g. Nora goes out.
+  /// With `null` nobody leaves.
   bool goalIsFreeWithout(String? outId) =>
       goalkeeperId == null || goalkeeperId == outId;
 
@@ -59,4 +66,45 @@ class Lineup {
         goalkeeperId: goalkeeperId == playerId ? null : goalkeeperId,
         fieldPlayerIds: fieldPlayerIds.where((id) => id != playerId).toList(),
       );
+
+  /// This lineup after the [events] of its team, in order (ADR-006).
+  ///
+  /// Example: Nora in goal, then "Tom for Nora" → the goal is empty.
+  /// Returns `null` when an event does not fit any more, e.g. Tom comes onto
+  /// a free place that is no longer free because a penalty was deleted (E2).
+  Lineup? replay(Iterable<GameEvent> events) {
+    Lineup? lineup = this;
+    for (final event in events) {
+      lineup = lineup?._apply(event);
+    }
+    return lineup;
+  }
+
+  /// This lineup after one [event], or `null` if the event does not fit.
+  Lineup? _apply(GameEvent event) {
+    final inGoal = event.incomingInGoal;
+    switch (event.type) {
+      case EventType.substitution:
+        final out = event.playerId!;
+        final incoming = event.incomingPlayerId!;
+        final fits = isOnField(out) &&
+            !isOnField(incoming) &&
+            (!inGoal || goalIsFreeWithout(out));
+        return fits ? substitute(out, incoming, intoGoal: inGoal) : null;
+      case EventType.comesOn:
+        final incoming = event.incomingPlayerId!;
+        final fits = hasFreePlace &&
+            !isOnField(incoming) &&
+            (!inGoal || goalIsFreeWithout(null));
+        return fits ? addPlayer(incoming, intoGoal: inGoal) : null;
+      case EventType.movesIntoGoal:
+        final player = event.playerId!;
+        final fits = goalIsFreeWithout(null) && isOnField(player);
+        return fits ? moveIntoGoal(player) : null;
+      default:
+        final leaving = event.leavingPlayerId;
+        if (leaving == null) return this;
+        return isOnField(leaving) ? remove(leaving) : null;
+    }
+  }
 }

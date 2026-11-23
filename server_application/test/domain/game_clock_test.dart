@@ -144,7 +144,7 @@ void main() {
 
   group('U5 half-time and end', () {
     test('U5_1 the second half starts at 30:00', () {
-      final halfTime = aRunningClock().halfTime(at(30));
+      final halfTime = aRunningClock().halfTime();
 
       final secondHalf = halfTime.start(at(45));
 
@@ -153,10 +153,11 @@ void main() {
     });
 
     test('U5_1 "Halbzeit" at 29:50 sets the clock to 30:00', () {
-      final clock = aRunningClock();
+      final clock = aRunningClock().stop(at(29, 50));
 
-      final halfTime = clock.halfTime(at(29, 50));
+      final halfTime = clock.halfTime();
 
+      expect(clock.gameTime(at(35)), time(29, 50));
       expect(halfTime.gameTime(at(35)), time(30));
       expect(halfTime.phase, ClockPhase.halfTime);
     });
@@ -164,7 +165,7 @@ void main() {
     test('U5_1 rejects "Halbzeit" in the second half', () {
       final clock = aClockInTheSecondHalf();
 
-      expect(() => clock.halfTime(at(10)),
+      expect(() => clock.halfTime(),
           throwsRuleViolation('„Halbzeit“ geht nur in der ersten Halbzeit.'));
     });
 

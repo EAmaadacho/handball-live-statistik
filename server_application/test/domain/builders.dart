@@ -60,8 +60,7 @@ Duration time(int minutes, [int seconds = 0]) =>
 GameClock aRunningClock() => GameClock.initial().start(at(0));
 
 /// A clock in the second half, started at 15:00:00 and running from 30:00.
-GameClock aClockInTheSecondHalf() =>
-    aRunningClock().halfTime(at(30)).start(at(0));
+GameClock aClockInTheSecondHalf() => aRunningClock().halfTime().start(at(0));
 
 /// Expects a [RuleViolation] with exactly this German [message].
 Matcher throwsRuleViolation(String message) => throwsA(

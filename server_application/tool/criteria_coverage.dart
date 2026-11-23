@@ -1,5 +1,6 @@
-// Reports which Muss acceptance criteria from docs/user-stories.md have no
-// test yet. Run from server_application: dart run tool/criteria_coverage.dart
+// Reports which Muss criteria from docs/user-stories.md have an acceptance
+// test and which a unit test.
+// Run from server_application: dart run tool/criteria_coverage.dart
 import 'dart:io';
 
 /// Finds the IDs that must be covered by a test, in test-name form.
@@ -53,24 +54,43 @@ Set<String> testedIds(Iterable<String> testSources) {
   };
 }
 
+/// Reads all test files below [folders], e.g. "test/domain/team_test.dart".
+Iterable<File> testFiles(List<String> folders) sync* {
+  for (final folder in folders) {
+    for (final file in Directory(folder).listSync(recursive: true)) {
+      if (file is File && file.path.endsWith('_test.dart')) yield file;
+    }
+  }
+}
+
+/// Acceptance tests live in a folder "acceptance", all others are unit tests.
+bool isAcceptanceTest(File file) =>
+    file.uri.pathSegments.contains('acceptance');
+
 void main() {
   final required =
       requiredIds(File('../docs/user-stories.md').readAsStringSync());
-  final tested = testedIds([
-    for (final folder in ['test', '../flutter_application/test'])
-      for (final file in Directory(folder).listSync(recursive: true))
-        if (file is File && file.path.endsWith('_test.dart'))
-          file.readAsStringSync(),
+  final files = testFiles(['test', '../flutter_application/test']).toList();
+  final acceptance = testedIds([
+    for (final file in files.where(isAcceptanceTest)) file.readAsStringSync(),
   ]);
-  final open = required.where((id) => !tested.contains(id)).toList();
+  final unit = testedIds([
+    for (final file in files.where((file) => !isAcceptanceTest(file)))
+      file.readAsStringSync(),
+  ]);
+  final open = required.where((id) => !acceptance.contains(id)).toList();
 
+  int count(Set<String> tested) => required.where(tested.contains).length;
   final report = StringBuffer()
-    ..writeln('## Muss-Kriterien mit Test: '
-        '${required.length - open.length} von ${required.length}')
+    ..writeln('## Muss-Kriterien')
+    ..writeln()
+    ..writeln(
+        '- mit Akzeptanztest: ${count(acceptance)} von ${required.length}')
+    ..writeln('- mit Unit-Test: ${count(unit)} von ${required.length}')
     ..writeln()
     ..writeln(open.isEmpty
-        ? 'Alle Muss-Kriterien haben einen Test.'
-        : 'Offen: ${open.join(', ')}');
+        ? 'Alle Muss-Kriterien haben einen Akzeptanztest.'
+        : 'Ohne Akzeptanztest: ${open.join(', ')}');
 
   stdout.write(report);
   final summary = Platform.environment['GITHUB_STEP_SUMMARY'];

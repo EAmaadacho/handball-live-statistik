@@ -1,4 +1,6 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_application/data/demo_game_source.dart';
+import 'package:flutter_application/data/game_source.dart';
 import 'package:flutter_application/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -11,8 +13,11 @@ import 'package:provider/provider.dart';
 import 'widget_test.mocks.dart';
 
 Widget _appWith(HealthApi api) {
-  return Provider<HealthApi>(
-    create: (_) => api,
+  return MultiProvider(
+    providers: [
+      Provider<HealthApi>.value(value: api),
+      Provider<GameSource>.value(value: DemoGameSource()),
+    ],
     child: const HandballApp(),
   );
 }

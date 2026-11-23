@@ -31,6 +31,14 @@ Future<Response> withErrorAnswers(Future<Response> Function() handler) async {
   }
 }
 
+/// Answers 403 unless the header [header] of [request] holds the secret
+/// [code] of the team or game (T1.2, S1.2, ADR-005).
+void requireCode(Request request, String header, String code) {
+  if (request.headers[header] != code) {
+    throw const HttpError(403, 'Dieser Link ist ungültig.');
+  }
+}
+
 /// Reads the JSON body and builds an object with [fromJson], e.g.
 /// `PlayerData.fromJson`. Answers 400 if the body is not valid JSON or
 /// misses a field.

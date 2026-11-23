@@ -11,6 +11,8 @@ tags:
     description: Is the server up?
   - name: teams
     description: Teams and their squads (T1, T2)
+  - name: games
+    description: Games, links and match reports (S1)
 paths:
   /health:
     get:
@@ -148,8 +150,167 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/RuleViolation'
+  /teams/{teamId}/games:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+      - $ref: '#/components/parameters/TeamCode'
+    post:
+      tags:
+        - games
+      summary: Creates a game and returns the ticker code once (S1, S1.2)
+      operationId: createGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewGame'
+      responses:
+        '201':
+          description: The new game; its id is the viewer link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameWithCode'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+    get:
+      tags:
+        - games
+      summary: All games of the team with status and links (S1.3)
+      operationId: getTeamGames
+      responses:
+        '200':
+          description: The games, ordered by date
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameWithCode'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /games/{gameId}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    get:
+      tags:
+        - games
+      summary: A game with both match reports, for everyone (viewer link)
+      operationId: getGame
+      responses:
+        '200':
+          description: The game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /games/{gameId}/match-report/home:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - games
+      summary: Adds a player of the home squad to the match report (S1.4)
+      operationId: addHomePlayerToMatchReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SquadPlayerRef'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/match-report/away:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - games
+      summary: Adds a new player to the opponent's game squad (S1.1, S1.4)
+      operationId: addAwayPlayerToMatchReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerData'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/match-report/{side}/{playerId}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+      - name: side
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Side'
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags:
+        - games
+      summary: Takes a player out of the match report before kick-off (S1.4)
+      operationId: removeFromMatchReport
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
 components:
   parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: The id of the game, also the public viewer link (S1.2)
+      schema:
+        type: string
+    TickerCode:
+      name: X-Ticker-Code
+      in: header
+      required: true
+      description: The secret code from the ticker link (S1.2, ADR-005)
+      schema:
+        type: string
     TeamId:
       name: teamId
       in: path
@@ -164,6 +325,12 @@ components:
       schema:
         type: string
   responses:
+    GameChanged:
+      description: The game after the change
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Game'
     BadRequest:
       description: The request body is not valid JSON or misses a field
       content:
@@ -177,7 +344,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     NotFound:
-      description: There is no team with this id (an unknown player gives 409)
+      description: There is no team or game with this id (an unknown player gives 409)
       content:
         application/json:
           schema:
@@ -325,4 +492,109 @@ components:
         team:
           $ref: '#/components/schemas/Team'
         code:
+          type: string
+    Side:
+      type: string
+      enum:
+        - home
+        - away
+    GameStatus:
+      description: planned before kick-off, running until the end, then finished (S1.3)
+      type: string
+      enum:
+        - planned
+        - running
+        - finished
+    Opponent:
+      description: The opponent, entered like a team, with its own game squad (S1.1)
+      type: object
+      required:
+        - name
+        - shortCode
+        - players
+      properties:
+        name:
+          $ref: '#/components/schemas/TeamName'
+        shortCode:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerData'
+    NewGame:
+      description: What the team manager enters to create a game (S1)
+      type: object
+      required:
+        - opponent
+        - date
+      properties:
+        opponent:
+          $ref: '#/components/schemas/Opponent'
+        date:
+          type: string
+          format: date-time
+        halfLengthMinutes:
+          type: integer
+          default: 30
+          description: e.g. 25 for a B-Jugend game
+    GameTeam:
+      description: A team in one game with its match report (at most 16 players, S1.4)
+      type: object
+      required:
+        - name
+        - displayName
+        - shortCode
+        - players
+      properties:
+        name:
+          $ref: '#/components/schemas/TeamName'
+        displayName:
+          type: string
+        shortCode:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+    Game:
+      type: object
+      required:
+        - id
+        - date
+        - halfLengthMinutes
+        - status
+        - home
+        - away
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date-time
+        halfLengthMinutes:
+          type: integer
+        status:
+          $ref: '#/components/schemas/GameStatus'
+        home:
+          $ref: '#/components/schemas/GameTeam'
+        away:
+          $ref: '#/components/schemas/GameTeam'
+    GameWithCode:
+      description: A game with the secret ticker code, only for the team manager (S1.2, S1.3)
+      type: object
+      required:
+        - game
+        - tickerCode
+      properties:
+        game:
+          $ref: '#/components/schemas/Game'
+        tickerCode:
+          type: string
+    SquadPlayerRef:
+      description: A player of the home team's squad, by id
+      type: object
+      required:
+        - playerId
+      properties:
+        playerId:
           type: string

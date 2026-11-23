@@ -266,6 +266,27 @@ class DemoGameSource implements GameSource {
     return player;
   }
 
+  @override
+  Future<void> removeFromMatchReport(
+      int id, String code, Side side, String playerId) async {
+    final s = _forTicker(id, code);
+    if (s.started) {
+      throw const RejectedAction(
+          'Nach dem Anpfiff bleibt der Spieler im Spielbericht.');
+    }
+    _states[id] = s.copyWith(
+      bench: {
+        ...s.bench,
+        side: [...s.bench[side]!]..remove(playerId)
+      },
+      matchReport: _reports(s)
+        ..[side] = [
+          for (final id in s.reportOf(side))
+            if (id != playerId) id
+        ],
+    );
+  }
+
   /// S1.4: at most 16 players per team on the match report.
   static void _checkLateRegistration(GameState s, Side side) {
     if (s.ended) throw const RejectedAction('Das Spiel ist beendet.');

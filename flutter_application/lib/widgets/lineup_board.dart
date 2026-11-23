@@ -17,11 +17,15 @@ class LineupBoard extends StatefulWidget {
     required this.state,
     required this.onKickoff,
     required this.onAddPlayer,
+    required this.onRemoveFromReport,
   });
 
   final GameState state;
   final void Function(Map<Side, List<String>> lineups) onKickoff;
   final void Function(Side side) onAddPlayer;
+
+  /// A player on the bench does not play today (S1.4, only before kick-off).
+  final void Function(Side side, String playerId) onRemoveFromReport;
 
   @override
   State<LineupBoard> createState() => _LineupBoardState();
@@ -67,8 +71,34 @@ class _LineupBoardState extends State<LineupBoard> {
     if (lineup.contains(id)) {
       setState(() => lineup[lineup.indexOf(id)] = null);
     } else {
-      showPlayerCard(context, _preview, side, id);
+      _showBenchPlayer(side, id);
     }
+  }
+
+  /// Card of a bench player with "Aus dem Spielbericht nehmen".
+  Future<void> _showBenchPlayer(Side side, String id) async {
+    final remove = await showModalBottomSheet<bool>(
+      context: context,
+      constraints: const BoxConstraints(maxWidth: 480),
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            PersonCard.player(state: _preview, side: side, playerId: id),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: OutlinedButton(
+                key: const Key('RemoveFromReport'),
+                onPressed: () => Navigator.of(sheet).pop(true),
+                child: const Text('Aus dem Spielbericht nehmen'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (remove == true) widget.onRemoveFromReport(side, id);
   }
 
   /// Why kick-off is not possible yet, e.g. "TV Mettmann: noch 2 Plätze frei".

@@ -81,6 +81,14 @@ abstract class GameSource {
   Future<Player> addSquadPlayer(int gameId, String tickerCode, Side side,
       int number, String firstName, String lastName);
 
+  /// Takes [playerId] off the match report, only before kick-off (S1.4).
+  ///
+  /// Example: Mettmann has 18 players in the squad; the first 16 by number
+  /// are on the report, the ticker takes out who does not play today.
+  /// After kick-off a player on the report stays there.
+  Future<void> removeFromMatchReport(
+      int gameId, String tickerCode, Side side, String playerId);
+
   /// Starts the clock when it stands, stops it when it runs (U1).
   /// The first start is the kick-off; both lineups must be set before.
   Future<void> toggleClock(int gameId, String tickerCode);

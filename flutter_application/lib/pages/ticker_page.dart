@@ -286,6 +286,19 @@ class _TickerPageState extends State<TickerPage> {
     if (ok) _message('$what, sitzt auf der Bank.');
   }
 
+  /// Before kick-off: [playerId] does not play today and leaves the report.
+  Future<void> _removeFromReport(Side side, String playerId) async {
+    final p = _state!.game.team(side).player(playerId);
+    final what = '${p.number} ${p.firstName} aus dem Spielbericht genommen';
+    final ok = await _send(
+      what,
+      () => _source.removeFromMatchReport(
+          widget.gameId, widget.tickerCode, side, playerId),
+      retry: () => _removeFromReport(side, playerId),
+    );
+    if (ok) _message('$what. Über „+“ kann er wieder nachgemeldet werden.');
+  }
+
   // ------------------------------------------------------------------ taps
 
   /// A player on the court or bench: finishes a waiting substitution,
@@ -416,7 +429,10 @@ class _TickerPageState extends State<TickerPage> {
               if (_offline) const _OfflineLine(),
               Expanded(
                 child: LineupBoard(
-                    state: state, onKickoff: _kickoff, onAddPlayer: _addPlayer),
+                    state: state,
+                    onKickoff: _kickoff,
+                    onAddPlayer: _addPlayer,
+                    onRemoveFromReport: _removeFromReport),
               ),
             ],
           ),

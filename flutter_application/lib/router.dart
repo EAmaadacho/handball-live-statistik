@@ -50,8 +50,9 @@ GoRouter createRouter(GameSource source, {String initialLocation = '/'}) {
                   gameId, state.pathParameters['tickerCode']!);
           return ok ? null : linkInvalidPath;
         },
-        builder: (context, state) =>
-            TickerPage(gameId: int.parse(state.pathParameters['gameId']!)),
+        builder: (context, state) => TickerPage(
+            gameId: int.parse(state.pathParameters['gameId']!),
+            tickerCode: state.pathParameters['tickerCode']!),
       ),
       GoRoute(
         path: '/spiel/:gameId/live',

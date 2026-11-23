@@ -34,4 +34,22 @@ class Lineup {
       fieldPlayerIds: [...field, incoming.id],
     );
   }
+
+  /// The player leaves the field and his place stays free, e.g. Max with a
+  /// two-minute penalty (E5.4). For the goalkeeper the goal stays empty (E5.6).
+  Lineup remove(String playerId) => Lineup(
+        goalkeeperId: goalkeeperId == playerId ? null : goalkeeperId,
+        fieldPlayerIds: fieldPlayerIds.where((id) => id != playerId).toList(),
+      );
+
+  /// [incoming] comes onto a free place. A goalkeeper takes an empty goal.
+  Lineup addPlayer(Player incoming) {
+    if (goalkeeperId == null && incoming.position == Position.goalkeeper) {
+      return Lineup(goalkeeperId: incoming.id, fieldPlayerIds: fieldPlayerIds);
+    }
+    return Lineup(
+      goalkeeperId: goalkeeperId,
+      fieldPlayerIds: [...fieldPlayerIds, incoming.id],
+    );
+  }
 }

@@ -4,6 +4,7 @@ import 'game_team.dart';
 import 'lineup.dart';
 import 'player.dart';
 import 'rule_violation.dart';
+import 'rules.dart' as rules;
 import 'score.dart';
 
 /// A game between two teams with its clock, starting lineups and events.
@@ -74,18 +75,9 @@ class Game {
         : _copy(awayStartingLineup: lineup);
   }
 
-  /// The lineup of [side] right now: starting lineup plus all substitutions.
-  Lineup? lineupOf(Side side) {
-    var lineup = side == Side.home ? homeStartingLineup : awayStartingLineup;
-    if (lineup == null) return null;
-    for (final event in events) {
-      if (event.type == EventType.substitution && event.side == side) {
-        final incoming = teamOf(side).playerById(event.incomingPlayerId!)!;
-        lineup = lineup!.substitute(event.playerId!, incoming);
-      }
-    }
-    return lineup;
-  }
+  /// The lineup of [side] right now: starting lineup, then every
+  /// substitution and every player sent off with a penalty, in order.
+  Lineup? lineupOf(Side side) => _replayLineup(side, events);
 
   /// The goalkeeper of [side] on the field right now, or `null` (E1.2).
   String? activeGoalkeeperOf(Side side) => lineupOf(side)?.goalkeeperId;
@@ -96,18 +88,10 @@ class Game {
   /// A substitution cannot be deleted; a mistake is undone by swapping back.
   Game substitute(Side side, String outId, String inId, DateTime now) {
     _checkGameIsRunning();
-    final team = teamOf(side);
-    final lineup = lineupOf(side)!;
-    if (!lineup.isOnField(outId)) {
+    if (!lineupOf(side)!.isOnField(outId)) {
       throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
     }
-    if (!team.hasPlayer(inId)) {
-      throw RuleViolation('Der Spieler gehört nicht zu ${team.name}.');
-    }
-    if (lineup.isOnField(inId)) {
-      throw const RuleViolation('Dieser Spieler steht schon auf dem Feld.');
-    }
-    _checkNotDisqualified(side, inId);
+    _checkCanComeIn(side, inId);
     return _append(GameEvent(
       number: nextEventNumber,
       type: EventType.substitution,
@@ -119,13 +103,44 @@ class Game {
     ));
   }
 
+  /// Brings [inId] onto a free place, e.g. after Max's penalty has run out.
+  ///
+  /// The ticker decides who comes back; it need not be Max. Rejected while
+  /// the team still plays short-handed (R7).
+  Game bringOn(Side side, String inId, DateTime now) {
+    _checkGameIsRunning();
+    _checkCanComeIn(side, inId);
+    final onField = lineupOf(side)!.playerIds.length;
+    if (onField >= rules.maxPlayersOnField) {
+      throw const RuleViolation('Auf dem Feld ist kein Platz frei.');
+    }
+    final gameTime = clock.gameTime(now);
+    if (onField >= rules.allowedOnField(events, side, gameTime)) {
+      throw RuleViolation('${teamOf(side).name} ist noch in Unterzahl.');
+    }
+    return _append(GameEvent(
+      number: nextEventNumber,
+      type: EventType.substitution,
+      side: side,
+      playerId: null,
+      incomingPlayerId: inId,
+      gameTime: gameTime,
+      half: _half,
+    ));
+  }
+
   /// Records an event at the current game time (E1).
   ///
   /// The server stamps the time, not the browser. Shots and technical
   /// faults need a player on the field; cards and penalties may also go to
   /// the bench (R7). Goals and saves store the opposing goalkeeper on the
   /// field (E1.2). A timeout has no player and stops the clock (U3.1).
-  Game record(EventType type, Side side, String? playerId, DateTime now) {
+  ///
+  /// Two minutes or red send the player off the field (E5.4). For a player
+  /// on the bench, the ticker names in [leavingPlayerId] the field player
+  /// who has to go off instead.
+  Game record(EventType type, Side side, String? playerId, DateTime now,
+      {String? leavingPlayerId}) {
     _checkGameIsRunning();
     if (type == EventType.substitution) {
       throw const RuleViolation('Wechsel bitte über „Wechseln“.');
@@ -143,10 +158,21 @@ class Game {
       throw RuleViolation('Der Spieler gehört nicht zu ${team.name}.');
     }
     if (playerId != null) _checkNotDisqualified(side, playerId);
-    if (isTimeout) _checkTimeoutAllowed(side, now);
-    if (_needsPlayerOnField(type) && !lineupOf(side)!.isOnField(playerId!)) {
+    if (isTimeout) {
+      rules.checkTimeoutAllowed(events,
+          side: side,
+          teamName: team.name,
+          gameTime: clock.gameTime(now),
+          half: _half,
+          halfLength: clock.halfLength);
+    }
+    final lineup = lineupOf(side)!;
+    if (rules.needsPlayerOnField(type) && !lineup.isOnField(playerId!)) {
       throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
     }
+    final leaving = rules.isPenalty(type)
+        ? _whoLeaves(lineup, playerId!, leavingPlayerId)
+        : null;
     final defender = opponentOf(side);
     final goalkeeperId = activeGoalkeeperOf(defender);
     if (type == EventType.save && goalkeeperId == null) {
@@ -158,7 +184,8 @@ class Game {
       type: type,
       side: side,
       playerId: playerId,
-      goalkeeperId: _storesGoalkeeper(type) ? goalkeeperId : null,
+      goalkeeperId: rules.storesGoalkeeper(type) ? goalkeeperId : null,
+      leavingPlayerId: leaving,
       gameTime: clock.gameTime(now),
       half: _half,
     );
@@ -181,19 +208,27 @@ class Game {
       throw const RuleViolation(
           'Ein Wechsel lässt sich nicht löschen. Bitte zurückwechseln.');
     }
-    return _copy(events: events.where((e) => e.number != number).toList());
+    final remaining = events.where((e) => e.number != number).toList();
+    final side = matches.single.side;
+    if (_replayLineup(side, remaining, check: true) == null) {
+      throw const RuleViolation(
+          'Löschen geht nicht mehr, danach wurde schon gewechselt.');
+    }
+    return _copy(events: remaining);
   }
 
-  /// Whether the player is disqualified: a red card or a third
-  /// two-minute penalty (R2).
-  ///
-  /// Computed from the events, never stored. Deleting Max's third penalty
-  /// lifts his disqualification at once (E2.2).
-  bool isDisqualified(Side side, String playerId) {
-    final own = events.where((e) => e.side == side && e.playerId == playerId);
-    return own.any((e) => e.type == EventType.redCard) ||
-        own.where((e) => e.type == EventType.twoMinutes).length >= 3;
-  }
+  /// Whether the player is disqualified (R2), see [rules.isDisqualified].
+  bool isDisqualified(Side side, String playerId) =>
+      rules.isDisqualified(events, side, playerId);
+
+  /// Penalties still running at [now], with remaining time (L3).
+  List<rules.RunningPenalty> runningPenalties(DateTime now) =>
+      rules.runningPenalties(events, clock.gameTime(now));
+
+  /// Whether [side] plays short-handed at [now], e.g. "TV Mettmann in
+  /// Unterzahl" (L3).
+  bool isShortHanded(Side side, DateTime now) =>
+      runningPenalties(now).any((p) => p.side == side);
 
   /// The current score, computed from goals and 7-metre goals (E1.1).
   Score get score => _scoreOf(events);
@@ -223,43 +258,62 @@ class Game {
 
   int get _half => clock.phase == ClockPhase.secondHalf ? 2 : 1;
 
-  static bool _needsPlayerOnField(EventType type) => const {
-        EventType.goal,
-        EventType.miss,
-        EventType.save,
-        EventType.sevenMeterGoal,
-        EventType.sevenMeterMiss,
-        EventType.technicalFault,
-      }.contains(type);
+  /// Replays the starting lineup of [side] through [events].
+  ///
+  /// With [check], returns `null` when the events no longer fit together,
+  /// e.g. Tom came onto a free place that would not be free any more.
+  Lineup? _replayLineup(Side side, List<GameEvent> events,
+      {bool check = false}) {
+    var lineup = side == Side.home ? homeStartingLineup : awayStartingLineup;
+    if (lineup == null) return null;
+    for (final e in events.where((e) => e.side == side)) {
+      if (e.type == EventType.substitution) {
+        final incoming = teamOf(side).playerById(e.incomingPlayerId!)!;
+        final out = e.playerId;
+        final fits = !lineup!.isOnField(incoming.id) &&
+            (out == null
+                ? lineup.playerIds.length < rules.maxPlayersOnField
+                : lineup.isOnField(out));
+        if (check && !fits) return null;
+        lineup = out == null
+            ? lineup.addPlayer(incoming)
+            : lineup.substitute(out, incoming);
+      } else if (e.leavingPlayerId != null) {
+        lineup = lineup!.remove(e.leavingPlayerId!);
+      }
+    }
+    return lineup;
+  }
 
-  static bool _storesGoalkeeper(EventType type) => const {
-        EventType.goal,
-        EventType.sevenMeterGoal,
-        EventType.save,
-      }.contains(type);
+  /// Who goes off the field for a penalty of [playerId] (E5.4).
+  String _whoLeaves(Lineup lineup, String playerId, String? chosen) {
+    if (lineup.isOnField(playerId)) return playerId;
+    if (chosen == null) {
+      throw const RuleViolation('Bitte wählen, wer das Feld verlässt.');
+    }
+    if (!lineup.isOnField(chosen)) {
+      throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
+    }
+    return chosen;
+  }
+
+  /// Checks that [inId] may come onto the field: in the squad, not on the
+  /// field yet and not disqualified (R3).
+  void _checkCanComeIn(Side side, String inId) {
+    final team = teamOf(side);
+    if (!team.hasPlayer(inId)) {
+      throw RuleViolation('Der Spieler gehört nicht zu ${team.name}.');
+    }
+    if (lineupOf(side)!.isOnField(inId)) {
+      throw const RuleViolation('Dieser Spieler steht schon auf dem Feld.');
+    }
+    _checkNotDisqualified(side, inId);
+  }
 
   void _checkNotDisqualified(Side side, String playerId) {
     if (isDisqualified(side, playerId)) {
       final player = teamOf(side).playerById(playerId)!;
       throw RuleViolation('${player.firstName} ist disqualifiziert.');
-    }
-  }
-
-  /// Timeout rules R1: at most 3 per game, 2 per half and 1 in the last
-  /// 5 minutes (from 55:00 with 30-minute halves).
-  void _checkTimeoutAllowed(Side side, DateTime now) {
-    final timeouts =
-        events.where((e) => e.side == side && e.type == EventType.timeout);
-    if (timeouts.length >= 3) {
-      throw RuleViolation('${teamOf(side).name} hat keine Auszeit mehr.');
-    }
-    if (timeouts.where((e) => e.half == _half).length >= 2) {
-      throw const RuleViolation('Nur 2 Auszeiten pro Halbzeit.');
-    }
-    final lastFiveMinutes = clock.halfLength * 2 - const Duration(minutes: 5);
-    if (clock.gameTime(now) >= lastFiveMinutes &&
-        timeouts.any((e) => e.gameTime >= lastFiveMinutes)) {
-      throw const RuleViolation('In den letzten 5 Minuten nur eine Auszeit.');
     }
   }
 

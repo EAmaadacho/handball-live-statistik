@@ -12,7 +12,9 @@ tags:
   - name: teams
     description: Teams and their squads (T1, T2)
   - name: games
-    description: Games, links and match reports (S1)
+    description: Games, links, match reports and lineups (S1, E5.1)
+  - name: clock
+    description: The game clock, kept on the server (U1–U5, ADR-003)
 paths:
   /health:
     get:
@@ -295,6 +297,135 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/lineups/{side}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+      - name: side
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Side'
+    put:
+      tags:
+        - games
+      summary: Sets the starting lineup of one team before kick-off (E5.1)
+      operationId: setLineup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLineup'
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    put:
+      tags:
+        - clock
+      summary: Corrects the stopped clock, e.g. 23:14 back to 23:05 (U2)
+      operationId: adjustClock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClockTime'
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/start:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Kick-off, or lets the stopped clock run again (U1, U1.1)
+      operationId: startClock
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/stop:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Stops the clock, e.g. for an injury (U1.1)
+      operationId: stopClock
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/half-time:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Ends the first half, the clock shows 30:00 (U5.1)
+      operationId: halfTime
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/end:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Ends the game (U5.2)
+      operationId: endGame
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
 components:
   parameters:
     GameId:
@@ -565,6 +696,7 @@ components:
         - status
         - home
         - away
+        - clock
       properties:
         id:
           type: string
@@ -579,6 +711,12 @@ components:
           $ref: '#/components/schemas/GameTeam'
         away:
           $ref: '#/components/schemas/GameTeam'
+        clock:
+          $ref: '#/components/schemas/Clock'
+        homeLineup:
+          $ref: '#/components/schemas/Lineup'
+        awayLineup:
+          $ref: '#/components/schemas/Lineup'
     GameWithCode:
       description: A game with the secret ticker code, only for the team manager (S1.2, S1.3)
       type: object
@@ -598,3 +736,59 @@ components:
       properties:
         playerId:
           type: string
+    ClockPhase:
+      type: string
+      enum:
+        - notStarted
+        - firstHalf
+        - halfTime
+        - secondHalf
+        - finished
+    Clock:
+      description: The clock at the moment of the answer; while it runs, the client counts on by itself (ADR-003)
+      type: object
+      required:
+        - phase
+        - running
+        - gameTimeSeconds
+      properties:
+        phase:
+          $ref: '#/components/schemas/ClockPhase'
+        running:
+          type: boolean
+        gameTimeSeconds:
+          type: integer
+          description: e.g. 1394 for 23:14
+    ClockTime:
+      type: object
+      required:
+        - gameTimeSeconds
+      properties:
+        gameTimeSeconds:
+          type: integer
+    Lineup:
+      description: Who stands on the field right now; no goalkeeperId means an empty goal (E1.5)
+      type: object
+      required:
+        - fieldPlayerIds
+      properties:
+        goalkeeperId:
+          type: string
+          nullable: true
+        fieldPlayerIds:
+          type: array
+          items:
+            type: string
+    NewLineup:
+      description: The starting lineup, any player may start in goal (E5.1, E5.7)
+      type: object
+      required:
+        - goalkeeperId
+        - fieldPlayerIds
+      properties:
+        goalkeeperId:
+          type: string
+        fieldPlayerIds:
+          type: array
+          items:
+            type: string

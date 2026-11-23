@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:server_application/api/game_access.dart';
 import 'package:server_application/api/game_api.dart';
 import 'package:server_application/api/team_api.dart';
 import 'package:server_application/storage/game_repository.dart';
@@ -25,7 +26,7 @@ Future<(int, dynamic)> send(
     body: body == null ? null : jsonEncode(body),
     headers: {
       if (teamCode != null) TeamApi.codeHeader: teamCode,
-      if (tickerCode != null) GameApi.tickerCodeHeader: tickerCode,
+      if (tickerCode != null) GameAccess.tickerCodeHeader: tickerCode,
     },
   ));
   return (response.statusCode, jsonDecode(await response.readAsString()));
@@ -60,7 +61,8 @@ void main() {
     teams = TeamRepository.open('${dir.path}/teams.json')
       ..save('t1', mettmann());
     var ids = 0;
-    gameApi = GameApi(teams, GameRepository.open('${dir.path}/games'),
+    gameApi = GameApi(
+        teams, GameAccess(GameRepository.open('${dir.path}/games')),
         newCode: () => 'ticker-code', newId: () => 'id-${++ids}');
   });
   tearDown(() => dir.deleteSync(recursive: true));

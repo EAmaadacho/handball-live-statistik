@@ -8,38 +8,29 @@ import '../domain/team_name.dart';
 /// Example: {"name": {"club": "TV Mettmann", "ageGroup": "men",
 /// "teamNumber": 1}, "shortCode": "TVM", "code": "...", "players": [...]}.
 Map<String, Object?> teamToJson(Team team) => {
-      'name': {
-        'club': team.name.club,
-        'ageGroup': team.name.ageGroup.name,
-        'teamNumber': team.name.teamNumber,
-      },
+      'name': teamNameToJson(team.name),
       'shortCode': team.shortCode,
       'code': team.code,
       'logoRef': team.logoRef,
-      'players': [for (final player in team.squad) _playerToJson(player)],
+      'players': [for (final player in team.squad) playerToJson(player)],
     };
 
 /// Builds the team again. The rules of the domain are checked once more,
 /// so a broken file cannot create an invalid team.
 Team teamFromJson(Map<String, Object?> json) {
-  final name = json['name'] as Map<String, Object?>;
   var team = Team.create(
-    name: TeamName(
-      club: name['club'] as String,
-      ageGroup: AgeGroup.values.byName(name['ageGroup'] as String),
-      teamNumber: name['teamNumber'] as int,
-    ),
+    name: teamNameFromJson(json['name'] as Map<String, Object?>),
     shortCode: json['shortCode'] as String,
     code: json['code'] as String,
     logoRef: json['logoRef'] as String?,
   );
   for (final player in json['players'] as List<Object?>) {
-    team = team.addPlayer(_playerFromJson(player as Map<String, Object?>));
+    team = team.addPlayer(playerFromJson(player as Map<String, Object?>));
   }
   return team;
 }
 
-Map<String, Object?> _playerToJson(Player player) => {
+Map<String, Object?> playerToJson(Player player) => {
       'id': player.id,
       'number': player.number,
       'firstName': player.firstName,
@@ -47,10 +38,22 @@ Map<String, Object?> _playerToJson(Player player) => {
       'position': player.position.name,
     };
 
-Player _playerFromJson(Map<String, Object?> json) => Player(
+Player playerFromJson(Map<String, Object?> json) => Player(
       id: json['id'] as String,
       number: json['number'] as int,
       firstName: json['firstName'] as String,
       lastName: json['lastName'] as String,
       position: Position.values.byName(json['position'] as String),
+    );
+
+Map<String, Object?> teamNameToJson(TeamName name) => {
+      'club': name.club,
+      'ageGroup': name.ageGroup.name,
+      'teamNumber': name.teamNumber,
+    };
+
+TeamName teamNameFromJson(Map<String, Object?> json) => TeamName(
+      club: json['club'] as String,
+      ageGroup: AgeGroup.values.byName(json['ageGroup'] as String),
+      teamNumber: json['teamNumber'] as int,
     );

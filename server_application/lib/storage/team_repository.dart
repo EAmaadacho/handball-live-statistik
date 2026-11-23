@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../domain/team.dart';
 import '../domain/team_name.dart';
+import 'json_file.dart';
 import 'team_json.dart';
 
 /// Keeps all teams in memory and writes them to data/teams.json after
@@ -43,15 +44,7 @@ class TeamRepository {
     _write();
   }
 
-  /// Writes to teams.json.tmp first and then renames it, so the file is
-  /// never left half written, e.g. if the server stops while writing.
-  void _write() {
-    final json = {
-      for (final entry in _teams.entries) entry.key: teamToJson(entry.value),
-    };
-    _file.parent.createSync(recursive: true);
-    final tmp = File('${_file.path}.tmp');
-    tmp.writeAsStringSync(const JsonEncoder.withIndent('  ').convert(json));
-    tmp.renameSync(_file.path);
-  }
+  void _write() => writeJsonFile(_file, {
+        for (final entry in _teams.entries) entry.key: teamToJson(entry.value),
+      });
 }

@@ -11,22 +11,24 @@ import '../domain/team_name.dart';
 /// The team as everyone may read it: without the secret code.
 api.Team toApiTeam(String id, Team team) => api.Team(
       id: id,
-      name: api.TeamName(
-        club: team.name.club,
-        ageGroup: api.AgeGroup.fromJson(team.name.ageGroup.name)!,
-        teamNumber: team.name.teamNumber,
-      ),
+      name: toApiName(team.name),
       displayName: team.name.display,
       shortCode: team.shortCode,
-      players: [for (final player in team.squad) _toApiPlayer(player)],
+      players: [for (final player in team.squad) toApiPlayer(player)],
     );
 
-api.Player _toApiPlayer(Player player) => api.Player(
+api.Player toApiPlayer(Player player) => api.Player(
       id: player.id,
       number: player.number,
       firstName: player.firstName,
       lastName: player.lastName,
       position: api.Position.fromJson(player.position.name)!,
+    );
+
+api.TeamName toApiName(TeamName name) => api.TeamName(
+      club: name.club,
+      ageGroup: api.AgeGroup.fromJson(name.ageGroup.name)!,
+      teamNumber: name.teamNumber,
     );
 
 TeamName toDomainName(api.TeamName name) => TeamName(

@@ -107,7 +107,7 @@ void main() {
 
     test('R4_2 rejects recording and deleting after the end', () {
       final finished = withGoals(aRunningGame(), Side.home, 1)
-          .halfTime(at(30))
+          .halfTime()
           .startClock(at(45))
           .end(at(75));
 
@@ -142,7 +142,7 @@ void main() {
     test('U5_1 the half-time score only counts the first half', () {
       final firstHalf =
           withGoals(withGoals(aRunningGame(), Side.home, 14), Side.away, 12);
-      final secondHalf = firstHalf.halfTime(at(30)).startClock(at(45));
+      final secondHalf = firstHalf.halfTime().startClock(at(45));
 
       final result = withGoals(secondHalf, Side.home, 3);
 

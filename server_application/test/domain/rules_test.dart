@@ -9,8 +9,7 @@ Game timeout(Game game, int minutes) =>
     game.record(EventType.timeout, Side.home, null, at(minutes));
 
 /// A running game in the second half; the clock restarted at 15:00:00 at 30:00.
-Game aGameInTheSecondHalf() =>
-    aRunningGame().halfTime(at(30)).startClock(at(0));
+Game aGameInTheSecondHalf() => aRunningGame().halfTime().startClock(at(0));
 
 /// Two minutes for a Mettmann player on the field at [minutes].
 Game penalty(Game game, String playerId, int minutes) =>
@@ -30,7 +29,7 @@ void main() {
     test('R1_1 a team gets at most three timeouts per game', () {
       final firstHalf =
           timeout(timeout(aRunningGame(), 10).startClock(at(11)), 20);
-      final secondHalf = firstHalf.halfTime(at(30)).startClock(at(31));
+      final secondHalf = firstHalf.halfTime().startClock(at(31));
       final game = timeout(secondHalf, 35).startClock(at(36));
 
       expect(() => timeout(game, 40),

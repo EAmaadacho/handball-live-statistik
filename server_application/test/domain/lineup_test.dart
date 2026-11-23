@@ -98,6 +98,18 @@ void main() {
       expect(back.lineupOf(Side.home)!.isOnField('p-max'), isTrue);
     });
 
+    test('E5_2 Max coming back after his penalty cannot be deleted', () {
+      final game = aRunningGame()
+          .record(EventType.twoMinutes, Side.home, 'p-max', at(10))
+          .bringOn(Side.home, 'p-max', at(12));
+
+      expect(game.events.last.type, EventType.comesOn);
+      expect(
+          () => game.deleteEvent(2),
+          throwsRuleViolation(
+              'Ein Wechsel lässt sich nicht löschen. Bitte zurückwechseln.'));
+    });
+
     test('E5_5 Hilden substitutes the same way: Jan out, Lars in', () {
       final game = aRunningGame();
 

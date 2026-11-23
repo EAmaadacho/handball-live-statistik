@@ -1,3 +1,5 @@
+import 'rule_violation.dart';
+
 /// Whether a player plays in the field or in goal.
 ///
 /// Only a goalkeeper can make saves or concede goals (R5).
@@ -41,5 +43,21 @@ class Player {
       lastName: lastName ?? this.lastName,
       position: position ?? this.position,
     );
+  }
+}
+
+/// Checks [player] against the rules for a squad (T2.1): number 1 to 99,
+/// not taken by one of [otherPlayers], first and last name given.
+///
+/// Used for a team's squad and for a game's match report (S1.1, S1.4).
+void checkPlayer(Player player, {required List<Player> otherPlayers}) {
+  if (player.number < 1 || player.number > 99) {
+    throw const RuleViolation('Nummern gehen von 1 bis 99.');
+  }
+  if (otherPlayers.any((p) => p.number == player.number)) {
+    throw RuleViolation('Die Nummer ${player.number} ist schon vergeben.');
+  }
+  if (player.firstName.trim().isEmpty || player.lastName.trim().isEmpty) {
+    throw const RuleViolation('Bitte Vor- und Nachnamen eingeben.');
   }
 }

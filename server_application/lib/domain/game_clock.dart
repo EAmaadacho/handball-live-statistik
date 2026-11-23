@@ -42,6 +42,23 @@ class GameClock {
     );
   }
 
+  /// A clock as it was saved, e.g. in data/games/<id>.json (ADR-004).
+  /// Only the storage uses this; the game changes the clock by its actions.
+  factory GameClock.restore({
+    required ClockPhase phase,
+    required bool running,
+    required DateTime? startedAt,
+    required Duration elapsedBefore,
+    required Duration halfLength,
+  }) =>
+      GameClock._(
+        phase: phase,
+        running: running,
+        startedAt: startedAt,
+        elapsedBefore: elapsedBefore,
+        halfLength: halfLength,
+      );
+
   /// The game time at [now], never past the end of the current half (U3.2).
   ///
   /// Example: running since 15:00:00 from 29:50, at 15:01:00 the game time

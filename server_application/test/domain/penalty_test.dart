@@ -54,7 +54,7 @@ void main() {
           .record(EventType.twoMinutes, Side.home, 'p-max', at(23));
 
       expect(() => game.bringOn(Side.home, 'p-tom', at(24)),
-          throwsRuleViolation('TV Mettmann ist noch in Unterzahl.'));
+          throwsRuleViolation('TV Mettmann Männer ist noch in Unterzahl.'));
     });
 
     test('R7 after 25:00 the ticker brings Tom on instead of Max', () {
@@ -79,7 +79,7 @@ void main() {
           aRunningGame().record(EventType.redCard, Side.home, 'p-lisa', at(10));
 
       expect(() => game.bringOn(Side.home, 'p-tom', at(11)),
-          throwsRuleViolation('TV Mettmann ist noch in Unterzahl.'));
+          throwsRuleViolation('TV Mettmann Männer ist noch in Unterzahl.'));
       final later = game.bringOn(Side.home, 'p-tom', at(12));
       expect(later.lineupOf(Side.home)!.playerIds, hasLength(7));
     });

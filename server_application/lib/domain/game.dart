@@ -71,7 +71,7 @@ class Game {
           'Bitte 7 verschiedene Spieler aufstellen: 1 im Tor, 6 im Feld.');
     }
     if (!ids.every(team.hasPlayer)) {
-      throw RuleViolation('Ein Spieler gehört nicht zu ${team.name}.');
+      throw RuleViolation('Ein Spieler gehört nicht zu ${team.name.display}.');
     }
     final lineup =
         Lineup(goalkeeperId: goalkeeperId, fieldPlayerIds: fieldPlayerIds);
@@ -130,7 +130,8 @@ class Game {
     final gameTime = clock.gameTime(now);
     if (lineup.playerIds.length >=
         rules.allowedOnField(events, side, gameTime)) {
-      throw RuleViolation('${teamOf(side).name} ist noch in Unterzahl.');
+      throw RuleViolation(
+          '${teamOf(side).name.display} ist noch in Unterzahl.');
     }
     return _append(GameEvent(
       number: nextEventNumber,
@@ -314,7 +315,7 @@ class Game {
   void _checkTimeoutAllowed(Side side, Duration gameTime) =>
       rules.checkTimeoutAllowed(events,
           side: side,
-          teamName: teamOf(side).name,
+          teamName: teamOf(side).name.display,
           gameTime: gameTime,
           half: _half,
           halfLength: clock.halfLength);
@@ -338,7 +339,7 @@ class Game {
     final goalkeeperId = activeGoalkeeperOf(defender);
     if (type == EventType.save && goalkeeperId == null) {
       throw RuleViolation(
-          '${teamOf(defender).name} hat keinen Torwart auf dem Feld.');
+          '${teamOf(defender).name.display} hat keinen Torwart auf dem Feld.');
     }
     return goalkeeperId;
   }
@@ -379,7 +380,7 @@ class Game {
   void _checkInSquad(Side side, String playerId) {
     final team = teamOf(side);
     if (!team.hasPlayer(playerId)) {
-      throw RuleViolation('Der Spieler gehört nicht zu ${team.name}.');
+      throw RuleViolation('Der Spieler gehört nicht zu ${team.name.display}.');
     }
   }
 

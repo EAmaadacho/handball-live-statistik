@@ -18,8 +18,8 @@ Beispiel für alle Stories: TV Mettmann (Heim) gegen HSG Hilden. Im Kader des TV
 
 ## T – Teams und Kader
 
-- <a id="t1"></a>**T1 (Muss)** Als Teamverantwortliche lege ich mein Team einmal an und bekomme einen geheimen Team-Link für die Teamverwaltung.
-  - <a id="t1-1"></a>T1.1 Ein Teamname kommt in der App nur einmal vor. „TV Mettmann“ ein zweites Mal wird abgelehnt.
+- <a id="t1"></a>**T1 (Muss)** Als Teamverantwortliche lege ich mein Team einmal an und bekomme einen geheimen Team-Link für die Teamverwaltung. Den Namen gebe ich wie bei nuLiga ein: Verein, Mannschaft (z. B. „Männer“ oder „weibliche Jugend B“) und Mannschaftsnummer.
+  - <a id="t1-1"></a>T1.1 Ein Team kommt in der App nur einmal vor. „TV Mettmann Männer“ ein zweites Mal wird abgelehnt, auch als „tv mettmann“; „TV Mettmann Männer II“ geht.
   - <a id="t1-2"></a>T1.2 Der Team-Link enthält einen zufälligen, nicht erratbaren Code. Ohne ihn antwortet der Server mit 403.
   - <a id="t1-3"></a>T1.3 Ein falscher oder ungültiger Link (Team, Ticker, Zuschauer) öffnet eine Seite „Link ungültig“ statt eines leeren Bildschirms.
 - <a id="t2"></a>**T2 (Muss)** Als Teamverantwortliche pflege ich den Kader: Spieler mit Trikotnummer, Name und Position (Feldspieler oder Torwart) hinzufügen, ändern und entfernen.
@@ -40,7 +40,7 @@ Beispiel für alle Stories: TV Mettmann (Heim) gegen HSG Hilden. Im Kader des TV
 
 ## S – Spiel anlegen
 
-- <a id="s1"></a>**S1 (Muss)** Als Teamverantwortliche lege ich ein Spiel an: Gegner (Name), Datum, Halbzeitlänge (Standard 30 Min., z. B. 25 Min. für die B-Jugend).
+- <a id="s1"></a>**S1 (Muss)** Als Teamverantwortliche lege ich ein Spiel an: Gegner (Verein, Mannschaft und Nummer wie beim Team), Datum, Halbzeitlänge (Standard 30 Min., z. B. 25 Min. für die B-Jugend).
   - <a id="s1-1"></a>S1.1 Für einen nicht registrierten Gegner pflege ich einen Spielkader mit Nummer und Name (Pflicht, mindestens 7 Spieler, davon 1 Torwart), z. B. „5 Jan Becker“. Das geht beim Anlegen oder im Ticker vor dem Anpfiff. Der Spielkader gilt nur für dieses Spiel.
   - <a id="s1-2"></a>S1.2 Nach dem Anlegen bekomme ich einen Ticker-Link und einen öffentlichen Zuschauer-Link.
   - <a id="s1-3"></a>S1.3 In der Teamverwaltung sehe ich alle Spiele mit Status (geplant, läuft, beendet) und finde die Links dort wieder.

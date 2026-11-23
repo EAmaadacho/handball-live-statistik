@@ -48,8 +48,10 @@ void main() {
     test('E1 rejects a player who is not in the game squad of that side', () {
       final game = aRunningGame();
 
-      expect(() => game.record(EventType.goal, Side.home, 'p-jan', at(1)),
-          throwsRuleViolation('Der Spieler gehört nicht zu TV Mettmann.'));
+      expect(
+          () => game.record(EventType.goal, Side.home, 'p-jan', at(1)),
+          throwsRuleViolation(
+              'Der Spieler gehört nicht zu TV Mettmann Männer.'));
     });
 
     test('E1 rejects a goal without a player', () {

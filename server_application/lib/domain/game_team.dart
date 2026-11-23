@@ -1,14 +1,16 @@
 import 'player.dart';
 import 'team.dart';
+import 'team_name.dart';
 
 /// A team as it plays in one game: name, short code and the game squad.
 ///
 /// The squad is a copy made when the game is created. If Max is later
 /// removed from TV Mettmann, his goals in this game stay.
 /// An opponent that is not registered gets its own game squad (S1.1),
-/// e.g. HSG Hilden with "5 Jan Becker".
+/// e.g. HSG Hilden Männer with "5 Jan Becker". Its [name] is entered like
+/// that of a registered team: club, age group and team number.
 class GameTeam {
-  final String name;
+  final TeamName name;
   final String shortCode;
   final List<Player> squad;
 

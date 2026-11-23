@@ -31,7 +31,8 @@ void main() {
       expect(
           () => game.setLineup(Side.home, 'p-nora',
               ['p-jan', 'p-lisa', 'p-ben', 'p-paul', 'p-finn', 'p-leon']),
-          throwsRuleViolation('Ein Spieler gehört nicht zu TV Mettmann.'));
+          throwsRuleViolation(
+              'Ein Spieler gehört nicht zu TV Mettmann Männer.'));
     });
 
     test('E5_1 rejects kick-off before both teams are set up', () {
@@ -166,8 +167,10 @@ void main() {
       final game =
           aRunningGame().substitute(Side.home, 'p-nora', 'p-tom', at(55));
 
-      expect(() => game.record(EventType.save, Side.away, 'p-jan', at(56)),
-          throwsRuleViolation('TV Mettmann hat keinen Torwart auf dem Feld.'));
+      expect(
+          () => game.record(EventType.save, Side.away, 'p-jan', at(56)),
+          throwsRuleViolation(
+              'TV Mettmann Männer hat keinen Torwart auf dem Feld.'));
     });
   });
 

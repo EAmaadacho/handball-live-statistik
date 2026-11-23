@@ -4,13 +4,20 @@ import '../data/models.dart';
 import '../data/ticker_rules.dart';
 import 'person_card.dart';
 
-/// What the ticker chose on a player's card: an event or a substitution.
+/// What the ticker chose on a player's card: an event, a substitution or
+/// "Ins Tor" (a field player becomes goalkeeper, IHF rule 4:7).
 class TickerChoice {
-  const TickerChoice.event(EventKind this.kind);
-  const TickerChoice.substitute() : kind = null;
+  const TickerChoice.event(EventKind this.kind) : intoGoal = false;
+  const TickerChoice.substitute()
+      : kind = null,
+        intoGoal = false;
+  const TickerChoice.intoGoal()
+      : kind = null,
+        intoGoal = true;
 
-  /// Null = substitute this player.
+  /// Null = substitute this player or put them in goal.
   final EventKind? kind;
+  final bool intoGoal;
 }
 
 /// Events for a player on the field, in the order of the buttons (E1).
@@ -106,6 +113,10 @@ class ActionButtons extends StatelessWidget {
         gameNotRunningReason(state),
         const TickerChoice.substitute(),
       ),
+      // Only offered while the goal is empty (E5.6).
+      if (onField && state.goalkeeperOf(side) == null)
+        button('Ins Tor', gameNotRunningReason(state),
+            const TickerChoice.intoGoal()),
     ];
 
     // One line when everything is blocked for the same reason, e.g. the

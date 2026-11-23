@@ -83,3 +83,47 @@ Future<String?> _choosePlayer(
     ),
   );
 }
+
+/// How does a field player come in on the goal place (IHF rule 4:7)?
+///
+/// "Als Torwart" (with goalkeeper shirt): saves and goals against count for
+/// them. "Als Feldspieler": the goal stays empty (E1.5). With 7 on the field
+/// that is a 7th field player, while short-handed a 6th.
+/// Returns true, false, or null when cancelled.
+Future<bool?> chooseGoalRole(BuildContext context, Player player) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    constraints: const BoxConstraints(maxWidth: 480),
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+            child: Text('Wie spielt ${player.number} ${player.firstName}?',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+          ),
+          ListTile(
+            key: const Key('Role-goalkeeper'),
+            title: const Text('Als Torwart'),
+            subtitle: const Text(
+                'Mit Torwarttrikot. Paraden und Gegentore zählen dann mit.'),
+            onTap: () => Navigator.of(context).pop(true),
+          ),
+          ListTile(
+            key: const Key('Role-fieldPlayer'),
+            title: const Text('Als Feldspieler'),
+            subtitle: const Text(
+                'Das Tor bleibt leer, ein Feldspieler mehr greift an.'),
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}

@@ -101,6 +101,7 @@ const demoState = GameState(
   },
   cards: {'jonas4': CardMark.yellow, 'away:A': CardMark.yellow},
   halftimeScore: '8:7',
+  goalkeepers: {Side.home: 'nora1', Side.away: 'a1'},
   events: [
     GameEvent(
         number: 6,

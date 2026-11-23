@@ -133,7 +133,8 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<void> substitute(
-      int id, String code, Side side, int place, String inPlayerId) async {
+      int id, String code, Side side, int place, String inPlayerId,
+      {bool? intoGoal}) async {
     final s = _forTicker(id, code);
     final notRunning = gameNotRunningReason(s);
     if (notRunning != null) throw RejectedAction(notRunning);
@@ -148,33 +149,43 @@ class DemoGameSource implements GameSource {
     final field = [...s.field[side]!]..[place] = inPlayerId;
     final bench = [...s.bench[side]!]..remove(inPlayerId);
     if (out != null) bench.add(out);
+    final keepers = _keepers(s);
+    final isKeeper = s.game.team(side).player(inPlayerId).isGoalkeeper;
+    final goalEmpty = keepers[side] == null;
+    if (place == 0) {
+      keepers[side] = (intoGoal ?? isKeeper) ? inPlayerId : null;
+    } else if (goalEmpty && (intoGoal ?? isKeeper)) {
+      // Mia comes in for Ben and goes straight into the empty goal;
+      // whoever stood on TH (an extra field player) takes Ben's place.
+      field[place] = field[0];
+      field[0] = inPlayerId;
+      keepers[side] = inPlayerId;
+    }
     _state = s.copyWith(
-        field: {...s.field, side: field}, bench: {...s.bench, side: bench});
+        field: {...s.field, side: field},
+        bench: {...s.bench, side: bench},
+        goalkeepers: keepers);
   }
 
   @override
-  Future<void> putInGoal(int id, String code, Side side, String playerId,
-      {String? outPlayerId}) async {
+  Future<void> putInGoal(
+      int id, String code, Side side, String playerId) async {
     final s = _forTicker(id, code);
+    if (s.goalkeeperOf(side) case final keeper?) {
+      final name = s.game.team(side).player(keeper).firstName;
+      throw RejectedAction('Im Tor steht schon $name.');
+    }
     final field = [...s.field[side]!];
-    final bench = [...s.bench[side]!];
-    if (field[0] != null) {
-      throw const RejectedAction('Im Tor steht schon jemand.');
+    if (!field.contains(playerId)) {
+      throw const RejectedAction('Dieser Spieler steht nicht auf dem Feld.');
     }
-    if (field.contains(playerId)) {
-      field[field.indexOf(playerId)] = null;
-    } else {
-      if (outPlayerId == null || !field.contains(outPlayerId)) {
-        throw const RejectedAction('Bitte wählen, wer dafür vom Feld geht.');
-      }
-      field[field.indexOf(outPlayerId)] = null;
-      bench
-        ..remove(playerId)
-        ..add(outPlayerId);
-    }
+    // Swap with whoever stands on TH, e.g. an extra field player.
+    final place = field.indexOf(playerId);
+    field[place] = field[0];
     field[0] = playerId;
     _state = s.copyWith(
-        field: {...s.field, side: field}, bench: {...s.bench, side: bench});
+        field: {...s.field, side: field},
+        goalkeepers: _keepers(s)..[side] = playerId);
   }
 
   @override
@@ -222,7 +233,10 @@ class DemoGameSource implements GameSource {
     }
     final red =
         kind == EventKind.redCard || s.statsOf(player.id).twoMinutes >= 3;
+    final keepers = _keepers(s);
+    if (keepers[side] == player.id) keepers[side] = null;
     return s.copyWith(
+      goalkeepers: keepers,
       field: {
         ...s.field,
         side: [for (final id in s.field[side]!) id == player.id ? null : id]
@@ -242,6 +256,10 @@ class DemoGameSource implements GameSource {
       cards: red ? {...s.cards, player.id: CardMark.red} : s.cards,
     );
   }
+
+  /// Who is in goal for both teams, as a map that may be changed.
+  static Map<Side, String?> _keepers(GameState s) =>
+      {for (final side in Side.values) side: s.goalkeeperOf(side)};
 
   /// Undoes what [_punish] did when the event is deleted (E2.2).
   GameState _forgive(GameState s, GameEvent event) {

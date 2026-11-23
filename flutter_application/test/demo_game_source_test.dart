@@ -70,6 +70,14 @@ void main() {
         throwsA(isA<RejectedAction>()));
   });
 
+  test('IHF 4:7 a save against Max in goal counts for Max', () async {
+    await source.record(_id, _code, EventKind.redCard, Side.home,
+        playerId: 'nora1');
+    await source.putInGoal(_id, _code, Side.home, 'max7');
+    await source.record(_id, _code, EventKind.save, Side.away, playerId: 'a3');
+    expect((await now()).statsOf('max7').saves, 1);
+  });
+
   test('ADR-005 a wrong ticker code is refused', () async {
     expect(() => source.toggleClock(_id, 'falsch'),
         throwsA(isA<RejectedAction>()));

@@ -199,6 +199,13 @@ class PersonCard extends StatelessWidget {
       return 'Zeitstrafe, noch ${formatPenalty(penalty.secondsLeft)}';
     }
     final place = state.field[side]!.indexOf(p.id);
+    final inGoal = state.goalkeeperOf(side) == p.id;
+    if (inGoal && !p.isGoalkeeper) {
+      return 'Im Tor · Feldspieler mit Torwarttrikot';
+    }
+    if (place == 0 && !inGoal) {
+      return 'Auf dem Feld · Feldspieler statt Torwart, Tor leer';
+    }
     if (place >= 0) return 'Auf dem Feld · ${fieldPlaces[place]}';
     return 'Auf der Bank';
   }

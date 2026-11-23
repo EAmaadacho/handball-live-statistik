@@ -21,8 +21,12 @@ class PlayerTable extends StatelessWidget {
     final team = state.game.team(side);
     final players = [...team.players]
       ..sort((a, b) => a.number.compareTo(b.number));
+    // A field player who stood in goal also appears with their saves.
+    bool keptGoal(Player p) =>
+        p.isGoalkeeper ||
+        state.statsOf(p.id).saves + state.statsOf(p.id).goalsAgainst > 0;
     final fieldPlayers = players.where((p) => !p.isGoalkeeper).toList();
-    final goalkeepers = players.where((p) => p.isGoalkeeper).toList();
+    final goalkeepers = players.where(keptGoal).toList();
     final t = TeamTotals.of(state, side);
     String rate(int part, int all) =>
         all == 0 ? '–' : '${(part * 100 / all).round()}';

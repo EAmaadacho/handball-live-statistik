@@ -14,6 +14,9 @@ enum EventType {
   technicalFault,
   timeout,
   substitution,
+
+  /// A field player on the field moves into the empty goal (E5.7).
+  movesIntoGoal,
 }
 
 /// One thing that happened in a game, stamped by the server with the game
@@ -29,6 +32,8 @@ enum EventType {
 /// A substitution stores the player going out in [playerId] and the player
 /// coming in in [incomingPlayerId] (E5.3). Without [playerId] the player
 /// comes in on a free place, e.g. after a penalty has run out.
+/// [incomingInGoal] says whether the incoming player took the goal slot.
+/// "Ins Tor" stores in [playerId] the field player who moves into goal.
 /// A two-minute penalty or a red card stores in [leavingPlayerId] who leaves
 /// the field: the punished player, or a field player for a punished
 /// player on the bench (E5.4).
@@ -40,6 +45,7 @@ class GameEvent {
   final String? incomingPlayerId;
   final String? leavingPlayerId;
   final String? goalkeeperId;
+  final bool incomingInGoal;
   final Duration gameTime;
   final int half;
 
@@ -51,6 +57,7 @@ class GameEvent {
     this.incomingPlayerId,
     this.leavingPlayerId,
     this.goalkeeperId,
+    this.incomingInGoal = false,
     required this.gameTime,
     required this.half,
   });

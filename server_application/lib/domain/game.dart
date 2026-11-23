@@ -53,6 +53,7 @@ class Game {
   /// Sets the starting lineup of one team before kick-off (E5.1).
   ///
   /// Example: Nora in goal, Max, Lisa, Ben, Paul, Finn and Leon in the field.
+  /// Any player of the squad may start in goal, also a field player (E5.7).
   Game setLineup(Side side, String goalkeeperId, List<String> fieldPlayerIds) {
     if (clock.phase != ClockPhase.notStarted) {
       throw const RuleViolation('Nach dem Anpfiff bitte wechseln.');
@@ -61,13 +62,10 @@ class Game {
     final ids = {goalkeeperId, ...fieldPlayerIds};
     if (fieldPlayerIds.length != 6 || ids.length != 7) {
       throw const RuleViolation(
-          'Bitte 7 verschiedene Spieler aufstellen: 1 Torwart, 6 Feldspieler.');
+          'Bitte 7 verschiedene Spieler aufstellen: 1 im Tor, 6 im Feld.');
     }
     if (!ids.every(team.hasPlayer)) {
       throw RuleViolation('Ein Spieler gehört nicht zu ${team.name}.');
-    }
-    if (team.playerById(goalkeeperId)!.position != Position.goalkeeper) {
-      throw const RuleViolation('Ins Tor darf nur ein Torwart.');
     }
     final lineup =
         Lineup(goalkeeperId: goalkeeperId, fieldPlayerIds: fieldPlayerIds);
@@ -80,16 +78,22 @@ class Game {
   /// substitution and every player sent off with a penalty, in order.
   Lineup? lineupOf(Side side) => _replayLineup(side, events);
 
-  /// The goalkeeper of [side] on the field right now, or `null` (E1.2).
+  /// Who stands in the goal of [side] right now, or `null` (E1.2).
   String? activeGoalkeeperOf(Side side) => lineupOf(side)?.goalkeeperId;
 
   /// Swaps a player on the field for one from the bench (E5.2).
   ///
   /// Stored as an event with game time (E5.3). Example: Max out, Tom in.
   /// A substitution cannot be deleted; a mistake is undone by swapping back.
-  Game substitute(Side side, String outId, String inId, DateTime now) {
+  ///
+  /// [intoGoal] says whether [inId] goes into the goal, which must be free
+  /// then. Without it, a goalkeeper of the squad takes a free goal and a
+  /// field player plays in the field (E1.5, E5.6).
+  Game substitute(Side side, String outId, String inId, DateTime now,
+      {bool? intoGoal}) {
     _checkGameIsRunning();
-    if (!lineupOf(side)!.isOnField(outId)) {
+    final lineup = lineupOf(side)!;
+    if (!lineup.isOnField(outId)) {
       throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
     }
     _checkCanComeIn(side, inId);
@@ -99,6 +103,7 @@ class Game {
       side: side,
       playerId: outId,
       incomingPlayerId: inId,
+      incomingInGoal: _goesIntoGoal(side, lineup, outId, inId, intoGoal),
       gameTime: clock.gameTime(now),
       half: _half,
     ));
@@ -107,11 +112,13 @@ class Game {
   /// Brings [inId] onto a free place, e.g. after Max's penalty has run out.
   ///
   /// The ticker decides who comes back; it need not be Max. Rejected while
-  /// the team still plays short-handed (R7).
-  Game bringOn(Side side, String inId, DateTime now) {
+  /// the team still plays short-handed (R7). [intoGoal] works as for
+  /// [substitute].
+  Game bringOn(Side side, String inId, DateTime now, {bool? intoGoal}) {
     _checkGameIsRunning();
     _checkCanComeIn(side, inId);
-    final onField = lineupOf(side)!.playerIds.length;
+    final lineup = lineupOf(side)!;
+    final onField = lineup.playerIds.length;
     if (onField >= rules.maxPlayersOnField) {
       throw const RuleViolation('Auf dem Feld ist kein Platz frei.');
     }
@@ -125,7 +132,30 @@ class Game {
       side: side,
       playerId: null,
       incomingPlayerId: inId,
+      incomingInGoal: _goesIntoGoal(side, lineup, null, inId, intoGoal),
       gameTime: gameTime,
+      half: _half,
+    ));
+  }
+
+  /// Field player [playerId] moves into the empty goal of [side] (E5.7).
+  ///
+  /// Example: Lea is out for two minutes and no other goalkeeper is left,
+  /// so Max goes into goal in a goalkeeper shirt. From then on saves and
+  /// goals against count for Max. Like a substitution it cannot be deleted.
+  Game putInGoal(Side side, String playerId, DateTime now) {
+    _checkGameIsRunning();
+    final lineup = lineupOf(side)!;
+    if (!lineup.isOnField(playerId)) {
+      throw const RuleViolation('Dieser Spieler steht nicht auf dem Feld.');
+    }
+    _checkGoalIsFree(side, lineup, null);
+    return _append(GameEvent(
+      number: nextEventNumber,
+      type: EventType.movesIntoGoal,
+      side: side,
+      playerId: playerId,
+      gameTime: clock.gameTime(now),
       half: _half,
     ));
   }
@@ -143,7 +173,7 @@ class Game {
   Game record(EventType type, Side side, String? playerId, DateTime now,
       {String? leavingPlayerId}) {
     _checkGameIsRunning();
-    if (type == EventType.substitution) {
+    if (type == EventType.substitution || type == EventType.movesIntoGoal) {
       throw const RuleViolation('Wechsel bitte über „Wechseln“.');
     }
     final isTimeout = type == EventType.timeout;
@@ -205,7 +235,8 @@ class Game {
     if (matches.isEmpty) {
       throw const RuleViolation('Ereignis nicht gefunden.');
     }
-    if (matches.single.type == EventType.substitution) {
+    if (matches.single.type == EventType.substitution ||
+        matches.single.type == EventType.movesIntoGoal) {
       throw const RuleViolation(
           'Ein Wechsel lässt sich nicht löschen. Bitte zurückwechseln.');
     }
@@ -274,21 +305,48 @@ class Game {
     if (lineup == null) return null;
     for (final e in events.where((e) => e.side == side)) {
       if (e.type == EventType.substitution) {
-        final incoming = teamOf(side).playerById(e.incomingPlayerId!)!;
+        final incoming = e.incomingPlayerId!;
         final out = e.playerId;
-        final fits = !lineup!.isOnField(incoming.id) &&
+        final fits = !lineup!.isOnField(incoming) &&
             (out == null
                 ? lineup.playerIds.length < rules.maxPlayersOnField
-                : lineup.isOnField(out));
+                : lineup.isOnField(out)) &&
+            (!e.incomingInGoal || lineup.goalIsFreeWithout(out));
         if (check && !fits) return null;
         lineup = out == null
-            ? lineup.addPlayer(incoming)
-            : lineup.substitute(out, incoming);
+            ? lineup.addPlayer(incoming, intoGoal: e.incomingInGoal)
+            : lineup.substitute(out, incoming, intoGoal: e.incomingInGoal);
+      } else if (e.type == EventType.movesIntoGoal) {
+        final fits =
+            lineup!.goalkeeperId == null && lineup.isOnField(e.playerId!);
+        if (check && !fits) return null;
+        lineup = lineup.moveIntoGoal(e.playerId!);
       } else if (e.leavingPlayerId != null) {
+        if (check && !lineup!.isOnField(e.leavingPlayerId!)) return null;
         lineup = lineup!.remove(e.leavingPlayerId!);
       }
     }
     return lineup;
+  }
+
+  /// Whether [inId] takes the goal when coming in for [outId] (`null` for a
+  /// free place). An explicit [intoGoal] needs a free goal; without it a
+  /// goalkeeper of the squad takes a free goal (E1.5, E5.6, E5.7).
+  bool _goesIntoGoal(
+      Side side, Lineup lineup, String? outId, String inId, bool? intoGoal) {
+    if (intoGoal == true) _checkGoalIsFree(side, lineup, outId);
+    final isGoalkeeper =
+        teamOf(side).playerById(inId)!.position == Position.goalkeeper;
+    return intoGoal ?? (isGoalkeeper && lineup.goalIsFreeWithout(outId));
+  }
+
+  /// Rejects when someone other than [outId] stands in goal, e.g.
+  /// "Im Tor steht schon Nora."
+  void _checkGoalIsFree(Side side, Lineup lineup, String? outId) {
+    if (!lineup.goalIsFreeWithout(outId)) {
+      final keeper = teamOf(side).playerById(lineup.goalkeeperId!)!;
+      throw RuleViolation('Im Tor steht schon ${keeper.firstName}.');
+    }
   }
 
   /// Who goes off the field for a penalty of [playerId] (E5.4).

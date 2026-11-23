@@ -57,7 +57,7 @@ Beispiel für alle Stories: TV Mettmann (Heim) gegen HSG Hilden. Im Kader des TV
 - <a id="e1"></a>**E1 (Muss)** Als Ticker erfasse ich Ereignisse für beide Teams mit wenigen Klicks auf dem Spielfeld ([E5](#e5)): erst den Spieler antippen, dann die Aktion. Jedes Ereignis bekommt automatisch die aktuelle Spielzeit.
   Ereignisse: Tor, Fehlwurf, Parade, 7-Meter Tor, 7-Meter verworfen, 2 Minuten, Gelb, Rot, Technischer Fehler, Auszeit (gehört zum Team).
   - <a id="e1-1"></a>E1.1 Der Spielstand wird nie eingetippt, sondern aus den Toren berechnet: Tor von Max bei 11:10 → 12:10.
-  - <a id="e1-2"></a>E1.2 Aktiver Torwart ist der Torwart, der gerade auf dem Feld steht ([E5](#e5)). Jedes Gegentor und jede Parade speichert den Torwart, der in dem Moment auf dem Feld war.
+  - <a id="e1-2"></a>E1.2 Aktiver Torwart ist, wer gerade im Tor steht ([E5](#e5)), auch ein Feldspieler ([E5.7](#e5-7)). Jedes Gegentor und jede Parade speichert den Torwart, der in dem Moment auf dem Feld war.
   - <a id="e1-3"></a>E1.3 Ein Tor von Hilden ist ein einziges Ereignis: Es zählt für den Werfer und als Gegentor für den aktiven Torwart von Mettmann. Genauso ist eine Parade von Nora der Fehlwurf eines Hilden-Spielers.
   - <a id="e1-4"></a>E1.4 Spieler stehen mit Nummer und Name im Ticker („7 Max Mustermann“).
   - <a id="e1-5"></a>E1.5 Steht kein Torwart auf dem Feld (leeres Tor, 7. Feldspieler), wird ein Gegentor ohne Torwart gespeichert und zählt bei keinem Torwart.
@@ -67,12 +67,13 @@ Beispiel für alle Stories: TV Mettmann (Heim) gegen HSG Hilden. Im Kader des TV
   - <a id="e2-2"></a>E2.2 Lösche ich die dritte Zeitstrafe von Max, fällt die automatische Rote Karte ([R2](#r2)) mit weg.
 - <a id="e3"></a>**E3 (Muss)** Nur wer den Ticker-Link hat, kann Ereignisse erfassen oder löschen (sonst 403). Der Ticker sieht den Kader, kann ihn aber nicht ändern.
 - <a id="e5"></a>**E5 (Muss)** Als Ticker sehe ich ein Handballfeld hochkant: Heimteam immer unten, Gastteam immer oben. Auf dem Feld steht die aktuelle Aufstellung, daneben die Bank.
-  - <a id="e5-1"></a>E5.1 Vor dem Anpfiff stelle ich je Team 7 Spieler auf (6 Feldspieler, 1 Torwart), z. B. Nora im Tor, Max und Lisa im Feld.
+  - <a id="e5-1"></a>E5.1 Vor dem Anpfiff stelle ich je Team 7 Spieler auf (6 im Feld, 1 im Tor), z. B. Nora im Tor, Max und Lisa im Feld.
   - <a id="e5-2"></a>E5.2 Ich wechsle wie in einem Fußball-Videospiel: Spieler auf dem Feld antippen, dann einen von der Bank, die beiden tauschen (Max raus, Tom rein). Gewechselt werden darf jederzeit.
   - <a id="e5-3"></a>E5.3 Jeder Wechsel wird mit Spielzeit gespeichert, aber nicht im Verlauf der Zuschauer angezeigt.
   - <a id="e5-4"></a>E5.4 Ein Spieler mit laufender Zeitstrafe steht neben dem Feld; das Team hat so lange einen Platz weniger.
   - <a id="e5-5"></a>E5.5 Aufstellen und Wechseln funktioniert für beide Teams gleich, auch für den Gegner mit Spielkader ([S1.1](#s1-1)).
   - <a id="e5-6"></a>E5.6 Bekommt der Torwart eine Zeitstrafe, wähle ich, wer ins Tor geht (z. B. ein Ersatztorwart für einen Feldspieler). Ohne Auswahl bleibt das Tor leer ([E1.5](#e1-5)).
+  - <a id="e5-7"></a>E5.7 Ist kein Torwart mehr da, stelle ich einen Feldspieler auf dem Feld ins leere Tor (mit Torwarttrikot), z. B. Max für die ausgefallene Lea. Ab dann zählen Paraden und Gegentore für ihn. Auch in der Aufstellung darf jeder Spieler im Tor beginnen.
 - <a id="e4"></a>**E4 (Kann)** Weitere Ereignisse: Assist (Tor Max, Vorlage Lisa), Block, Ballgewinn, 7-Meter herausgeholt, Fehlpass und Schrittfehler einzeln statt „Technischer Fehler“.
 - <a id="e6"></a>**E6 (Kann)** Als Ticker erfasse ich je Team bis zu 4 Offizielle (A–D) mit Name und Rolle an der Bank, z. B. „A Paul Neumann, Trainer“.
   - <a id="e6-1"></a>E6.1 Offizielle bekommen Gelb, 2 Minuten und Rot. Alle Offiziellen eines Teams zusammen bekommen höchstens eine Gelbe Karte und eine Zeitstrafe.
@@ -123,7 +124,7 @@ Verstöße lehnt der Server mit einer verständlichen Meldung ab (HTTP 409).
 - <a id="r4"></a>**R4 (Muss)** Ereignisse nur während des Spiels
   - <a id="r4-1"></a>R4.1 Vor dem Anpfiff werden keine Ereignisse angenommen.
   - <a id="r4-2"></a>R4.2 Nach Spielende werden keine Ereignisse mehr angenommen oder gelöscht.
-- <a id="r5"></a>**R5 (Muss)** Paraden und Gegentore zählen nur für den Torwart im Tor. Ist das Tor leer, wird „Parade“ abgelehnt.
+- <a id="r5"></a>**R5 (Muss)** Paraden und Gegentore zählen nur für den Spieler im Tor. Ist das Tor leer, wird „Parade“ abgelehnt.
 - <a id="r7"></a>**R7 (Muss)** Auf dem Feld stehen höchstens 7 Spieler eines Teams, während einer Zeitstrafe oder nach Rot entsprechend weniger. Würfe (Tor, Fehlwurf, Parade, 7-Meter) und technische Fehler bekommen nur Spieler auf dem Feld, Gelb, 2 Minuten und Rot auch Spieler auf der Bank.
 - <a id="r6"></a>**R6 (Kann)** Hinweis bei Gelb: Hat Max schon Gelb oder hat Mettmann schon 3 Gelbe, zeigt der Ticker „Laut Regel sollte jetzt eine Zeitstrafe folgen“. Das ist nur ein Hinweis, keine Ablehnung, weil die Regel ein „sollte“ ist.
 

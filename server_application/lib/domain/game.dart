@@ -6,6 +6,7 @@ import 'player.dart';
 import 'rule_violation.dart';
 import 'rules.dart' as rules;
 import 'score.dart';
+import 'statistics.dart';
 
 /// A game between two teams with its clock, starting lineups and events.
 ///
@@ -229,6 +230,11 @@ class Game {
   /// Unterzahl" (L3).
   bool isShortHanded(Side side, DateTime now) =>
       runningPenalties(now).any((p) => p.side == side);
+
+  /// The statistics of every player of [side] (L2), e.g. Max: 8 goals
+  /// from 10 shots (80 %).
+  List<PlayerStatistics> statisticsOf(Side side) =>
+      computeStatistics(events, side, teamOf(side));
 
   /// The current score, computed from goals and 7-metre goals (E1.1).
   Score get score => _scoreOf(events);

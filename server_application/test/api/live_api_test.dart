@@ -71,6 +71,62 @@ void main() {
     });
   });
 
+  group('L2 statistics come with the game', () {
+    test('L2 Max scores 1 of 2 shots, Kai saves 1 and lets in 1', () async {
+      await harness.kickOff();
+      for (final type in ['goal', 'save']) {
+        await harness.send('POST', '/games/g1/events',
+            body: {'type': type, 'side': 'home', 'playerId': 'p-max'});
+      }
+
+      final (_, json) = await harness.view('');
+
+      final max = (json['homeStatistics'] as List)
+          .singleWhere((row) => row['playerId'] == 'p-max');
+      expect(max['goals'], 1);
+      expect(max['shots'], 2);
+      expect(max['shootingPercentage'], 50);
+      final kai = (json['awayStatistics'] as List)
+          .singleWhere((row) => row['playerId'] == 'p-kai');
+      expect(kai['saves'], 1);
+      expect(kai['goalsAgainst'], 1);
+      expect(kai['savePercentage'], 50);
+    });
+
+    test('L2 without a shot there is no shooting percentage', () async {
+      final (_, json) = await harness.view('');
+
+      final max = (json['homeStatistics'] as List)
+          .singleWhere((row) => row['playerId'] == 'p-max');
+      expect(max['shots'], 0);
+      expect(max['shootingPercentage'], isNull);
+    });
+  });
+
+  group('U5.2 the viewer link works after the final whistle', () {
+    test('U5_2 after the end and a restart the final score is still shown',
+        () async {
+      await harness.kickOff();
+      harness.now = at(5);
+      await harness.send('POST', '/games/g1/events',
+          body: {'type': 'goal', 'side': 'home', 'playerId': 'p-max'});
+      harness.now = at(30);
+      await harness.send('POST', '/games/g1/clock/half-time');
+      harness.now = at(45);
+      await harness.send('POST', '/games/g1/clock/start');
+      harness.now = at(75);
+      final (status, _) = await harness.send('POST', '/games/g1/clock/end');
+
+      harness.restartServer();
+      final (_, json) = await harness.view('');
+
+      expect(status, 200);
+      expect(json['status'], 'finished');
+      expect(json['score'], {'home': 1, 'away': 0});
+      expect(json['events'], hasLength(1));
+    });
+  });
+
   group('ticker link is checked when it is opened', () {
     test('the right ticker code gives 204', () async {
       final (status, _) = await harness.send('GET', '/games/g1/ticker-access');

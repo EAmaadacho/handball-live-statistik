@@ -6,6 +6,7 @@ import '../domain/game_team.dart';
 import '../domain/lineup.dart';
 import '../domain/rules.dart' as rules;
 import '../domain/score.dart';
+import '../domain/statistics.dart';
 import '../storage/stored_game.dart';
 import 'team_mapping.dart';
 
@@ -39,8 +40,31 @@ api.Game toApiGame(StoredGame stored, DateTime now) {
           remainingSeconds: penalty.remaining.inSeconds,
         ),
     ],
+    homeStatistics: _toApiStatistics(game.statisticsOf(Side.home)),
+    awayStatistics: _toApiStatistics(game.statisticsOf(Side.away)),
   );
 }
+
+/// e.g. Max: 8 goals from 10 shots, shooting percentage 80 (L2).
+List<api.PlayerStatistics> _toApiStatistics(List<PlayerStatistics> rows) => [
+      for (final row in rows)
+        api.PlayerStatistics(
+          playerId: row.playerId,
+          goals: row.goals,
+          shots: row.shots,
+          shootingPercentage: row.shootingPercentage,
+          sevenMeterGoals: row.sevenMeterGoals,
+          sevenMeters: row.sevenMeters,
+          sevenMeterPercentage: row.sevenMeterPercentage,
+          technicalFaults: row.technicalFaults,
+          yellowCards: row.yellowCards,
+          twoMinutes: row.twoMinutes,
+          redCards: row.redCards,
+          saves: row.saves,
+          goalsAgainst: row.goalsAgainst,
+          savePercentage: row.savePercentage,
+        ),
+    ];
 
 api.Score _toApiScore(Score score) =>
     api.Score(home: score.home, away: score.away);

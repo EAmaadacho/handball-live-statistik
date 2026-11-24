@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:server_application/api/game_access.dart';
 import 'package:server_application/api/game_api.dart';
 import 'package:server_application/api/ticker_api.dart';
+import 'package:server_application/storage/game_archive.dart';
 import 'package:server_application/storage/game_repository.dart';
 import 'package:server_application/storage/team_repository.dart';
 import 'package:server_application/storage/stored_game.dart';
@@ -31,23 +32,28 @@ class TickerHarness {
   late GameApi gameApi;
 
   TickerHarness() {
-    final games = openGames();
-    games.games.save(StoredGame(
-      id: 'g1',
-      homeTeamId: 't1',
-      date: DateTime(2026, 11, 28, 18),
-      tickerCode: 'ticker-code',
-      game: aGame(),
-    ));
-    tickerApi = TickerApi(games);
-    gameApi = GameApi(TeamRepository.open('${dir.path}/teams.json'), games);
+    _start().games.save(StoredGame(
+          id: 'g1',
+          homeTeamId: 't1',
+          date: DateTime(2026, 11, 28, 18),
+          tickerCode: 'ticker-code',
+          game: aGame(),
+        ));
   }
 
-  /// Reads the games from the folder again, like after a server restart.
-  GameAccess openGames() =>
-      GameAccess(GameRepository.open('${dir.path}/games'), now: () => now);
+  /// Reads the games and the archive from the folder again, like after a
+  /// server restart.
+  void restartServer() => _start();
 
-  void restartServer() => tickerApi = TickerApi(openGames());
+  GameAccess _start() {
+    final games = GameAccess(
+        GameRepository.open('${dir.path}/games',
+            archive: GameArchive.open('${dir.path}/archive.db')),
+        now: () => now);
+    tickerApi = TickerApi(games);
+    gameApi = GameApi(TeamRepository.open('${dir.path}/teams.json'), games);
+    return games;
+  }
 
   void delete() => dir.deleteSync(recursive: true);
 

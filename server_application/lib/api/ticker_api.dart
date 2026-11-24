@@ -19,6 +19,7 @@ class TickerApi {
   TickerApi(this._games);
 
   Router get router => Router()
+    ..get('/games/<gameId>/ticker-access', _checkAccess)
     ..put('/games/<gameId>/lineups/<side>', _setLineup)
     ..post('/games/<gameId>/clock/start',
         _clockAction((g, now) => g.startClock(now)))
@@ -33,6 +34,15 @@ class TickerApi {
     ..post('/games/<gameId>/substitutions', _substitute)
     ..post('/games/<gameId>/come-on', _comeOn)
     ..post('/games/<gameId>/into-goal', _putInGoal);
+
+  /// GET /games/{gameId}/ticker-access: checks the ticker link when Lisa
+  /// opens it, 204 if the code is right, otherwise 403 (S1.2).
+  Future<Response> _checkAccess(Request request, String gameId) =>
+      withErrorAnswers(() async {
+        final stored = _games.find(gameId);
+        requireCode(request, GameAccess.tickerCodeHeader, stored.tickerCode);
+        return Response(204);
+      });
 
   /// PUT /games/{gameId}/lineups/{side}: e.g. Nora in goal, Max, Lisa, Ben,
   /// Paul, Finn and Leon in the field (E5.1).

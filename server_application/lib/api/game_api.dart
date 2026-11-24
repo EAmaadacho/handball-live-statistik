@@ -87,8 +87,17 @@ class GameApi {
       });
 
   /// GET /games/{gameId}: the game for everyone with the viewer link.
+  ///
+  /// The live view asks every second with ?version=5 (ADR-002). If the
+  /// game is still at version 5, the short answer 204 says "nothing new".
   Future<Response> _getGame(Request request, String gameId) =>
-      withErrorAnswers(() async => _games.answer(_games.find(gameId)));
+      withErrorAnswers(() async {
+        final stored = _games.find(gameId);
+        final knownVersion =
+            int.tryParse(request.url.queryParameters['version'] ?? '');
+        if (knownVersion == stored.version) return Response(204);
+        return _games.answer(stored);
+      });
 
   /// POST /games/{gameId}/match-report/home: e.g. Tom arrives late and is
   /// taken from the squad of TV Mettmann into the match report (S1.4).

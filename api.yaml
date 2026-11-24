@@ -209,7 +209,17 @@ paths:
       tags:
         - games
       summary: A game with both match reports, for everyone (viewer link)
+      description: >-
+        The live view asks every second with the version it knows (ADR-002).
+        If nothing changed since, the answer is 204 without content.
       operationId: getGame
+      parameters:
+        - name: version
+          in: query
+          required: false
+          description: The version the live view already shows
+          schema:
+            type: integer
       responses:
         '200':
           description: The game
@@ -217,6 +227,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Game'
+        '204':
+          description: Nothing changed since this version
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /games/{gameId}/ticker-access:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    get:
+      tags:
+        - games
+      summary: Checks the ticker link when it is opened (S1.2)
+      operationId: checkTickerAccess
+      responses:
+        '204':
+          description: The ticker code is right
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
   /games/{gameId}/match-report/home:
@@ -598,7 +626,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: The team code is missing or wrong (T1.2)
+      description: The team code or ticker code is missing or wrong (T1.2, S1.2)
       content:
         application/json:
           schema:
@@ -820,6 +848,8 @@ components:
       type: object
       required:
         - id
+        - version
+        - homeTeamId
         - date
         - halfLengthMinutes
         - status
@@ -832,6 +862,12 @@ components:
         - runningPenalties
       properties:
         id:
+          type: string
+        version:
+          description: Counts every change of the game, not the running clock (ADR-002)
+          type: integer
+        homeTeamId:
+          description: To read the squad of the home team, e.g. for a player who arrives late (S1.4)
           type: string
         date:
           type: string

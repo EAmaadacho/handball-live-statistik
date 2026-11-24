@@ -61,6 +61,16 @@ void main() {
       expect(lineup.isOnField('p-max'), isFalse);
     });
 
+    test('E5_2 Tom takes the place of Max, the order stays the same', () {
+      final game = aRunningGame();
+
+      final result = game.substitute(Side.home, 'p-max', 'p-tom', at(12));
+
+      final field = result.lineupOf(Side.home)!.fieldPlayerIds;
+      expect(field.first, 'p-tom');
+      expect(field.skip(1), mettmannFieldPlayers.skip(1));
+    });
+
     test('E5_3 the substitution is stored with game time 12:00', () {
       final game = aRunningGame();
 

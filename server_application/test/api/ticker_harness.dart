@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:server_application/api/game_access.dart';
+import 'package:server_application/api/game_api.dart';
 import 'package:server_application/api/ticker_api.dart';
 import 'package:server_application/storage/game_repository.dart';
+import 'package:server_application/storage/team_repository.dart';
 import 'package:server_application/storage/stored_game.dart';
 import 'package:shelf/shelf.dart';
 
@@ -26,6 +28,7 @@ class TickerHarness {
   final Directory dir = Directory.systemTemp.createTempSync('ticker_api_');
   DateTime now = at(0);
   late TickerApi tickerApi;
+  late GameApi gameApi;
 
   TickerHarness() {
     final games = openGames();
@@ -37,6 +40,7 @@ class TickerHarness {
       game: aGame(),
     ));
     tickerApi = TickerApi(games);
+    gameApi = GameApi(TeamRepository.open('${dir.path}/teams.json'), games);
   }
 
   /// Reads the games from the folder again, like after a server restart.
@@ -56,7 +60,17 @@ class TickerHarness {
       body: body == null ? null : jsonEncode(body),
       headers: {if (code != null) GameAccess.tickerCodeHeader: code},
     ));
-    return (response.statusCode, jsonDecode(await response.readAsString()));
+    return _read(response);
+  }
+
+  /// Asks for the game like the live view, e.g. with `?version=5`.
+  Future<(int, dynamic)> view(String query) async => _read(await gameApi.router
+      .call(Request('GET', Uri.parse('http://localhost/games/g1$query'))));
+
+  /// Status and JSON body; `null` for an answer without content (204).
+  Future<(int, dynamic)> _read(Response response) async {
+    final body = await response.readAsString();
+    return (response.statusCode, body.isEmpty ? null : jsonDecode(body));
   }
 
   /// Both lineups set, kick-off at 15:00:00.

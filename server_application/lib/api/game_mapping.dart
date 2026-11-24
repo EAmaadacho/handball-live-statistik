@@ -15,6 +15,8 @@ api.Game toApiGame(StoredGame stored, DateTime now) {
   final game = stored.game;
   return api.Game(
     id: stored.id,
+    version: stored.version,
+    homeTeamId: stored.homeTeamId,
     date: stored.date,
     halfLengthMinutes: game.clock.halfLength.inMinutes,
     status: _statusOf(game.clock.phase),

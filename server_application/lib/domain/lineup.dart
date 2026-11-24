@@ -33,14 +33,27 @@ class Lineup {
   /// With [intoGoal] the incoming player takes the free goal, e.g. Lea for
   /// Nora. Otherwise he plays in the field; if [outId] was in goal, the goal
   /// stays empty, e.g. Tom for Nora (E1.5).
+  ///
+  /// A field player takes the place of the one going out, e.g. Tom for Max
+  /// on left wing, so the live view keeps the order.
   Lineup substitute(String outId, String incomingId, {required bool intoGoal}) {
-    final field = fieldPlayerIds.where((id) => id != outId).toList();
     if (intoGoal) {
-      return Lineup(goalkeeperId: incomingId, fieldPlayerIds: field);
+      return Lineup(
+        goalkeeperId: incomingId,
+        fieldPlayerIds: fieldPlayerIds.where((id) => id != outId).toList(),
+      );
+    }
+    if (fieldPlayerIds.contains(outId)) {
+      return Lineup(
+        goalkeeperId: goalkeeperId,
+        fieldPlayerIds: [
+          for (final id in fieldPlayerIds) id == outId ? incomingId : id,
+        ],
+      );
     }
     return Lineup(
       goalkeeperId: goalkeeperId == outId ? null : goalkeeperId,
-      fieldPlayerIds: [...field, incomingId],
+      fieldPlayerIds: [...fieldPlayerIds, incomingId],
     );
   }
 

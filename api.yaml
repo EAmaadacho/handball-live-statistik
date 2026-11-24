@@ -15,6 +15,8 @@ tags:
     description: Games, links, match reports and lineups (S1, E5.1)
   - name: clock
     description: The game clock, kept on the server (U1–U5, ADR-003)
+  - name: events
+    description: Events and substitutions during the game (E1, E2, E5)
 paths:
   /health:
     get:
@@ -207,7 +209,17 @@ paths:
       tags:
         - games
       summary: A game with both match reports, for everyone (viewer link)
+      description: >-
+        The live view asks every second with the version it knows (ADR-002).
+        If nothing changed since, the answer is 204 without content.
       operationId: getGame
+      parameters:
+        - name: version
+          in: query
+          required: false
+          description: The version the live view already shows
+          schema:
+            type: integer
       responses:
         '200':
           description: The game
@@ -215,6 +227,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Game'
+        '204':
+          description: Nothing changed since this version
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /games/{gameId}/ticker-access:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    get:
+      tags:
+        - games
+      summary: Checks the ticker link when it is opened (S1.2)
+      operationId: checkTickerAccess
+      responses:
+        '204':
+          description: The ticker code is right
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
   /games/{gameId}/match-report/home:
@@ -426,6 +456,133 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/events:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Records an event at the server game time, e.g. a goal of Max (E1, R1–R7)
+      operationId: recordEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEvent'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/events/{number}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+      - name: number
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      tags:
+        - events
+      summary: Deletes an event after a typing mistake; the number is never given out again (E2)
+      operationId: deleteEvent
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/substitutions:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Swaps a player on the field for one from the bench (E5.2, E5.3)
+      operationId: substitute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Substitution'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/come-on:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Brings a player onto a free place, e.g. after a penalty (E5.4, R7)
+      operationId: comeOn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComeOn'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/into-goal:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Moves a field player on the field into the empty goal (E5.7)
+      operationId: putInGoal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntoGoal'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
 components:
   parameters:
     GameId:
@@ -469,7 +626,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: The team code is missing or wrong (T1.2)
+      description: The team code or ticker code is missing or wrong (T1.2, S1.2)
       content:
         application/json:
           schema:
@@ -691,14 +848,26 @@ components:
       type: object
       required:
         - id
+        - version
+        - homeTeamId
         - date
         - halfLengthMinutes
         - status
         - home
         - away
         - clock
+        - score
+        - halfTimeScore
+        - events
+        - runningPenalties
       properties:
         id:
+          type: string
+        version:
+          description: Counts every change of the game, not the running clock (ADR-002)
+          type: integer
+        homeTeamId:
+          description: To read the squad of the home team, e.g. for a player who arrives late (S1.4)
           type: string
         date:
           type: string
@@ -717,6 +886,19 @@ components:
           $ref: '#/components/schemas/Lineup'
         awayLineup:
           $ref: '#/components/schemas/Lineup'
+        score:
+          $ref: '#/components/schemas/Score'
+        halfTimeScore:
+          $ref: '#/components/schemas/Score'
+        events:
+          description: Without substitutions, they are not shown (E5.3)
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        runningPenalties:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunningPenalty'
     GameWithCode:
       description: A game with the secret ticker code, only for the team manager (S1.2, S1.3)
       type: object
@@ -792,3 +974,123 @@ components:
           type: array
           items:
             type: string
+    EventType:
+      type: string
+      enum:
+        - goal
+        - miss
+        - save
+        - sevenMeterGoal
+        - sevenMeterMiss
+        - twoMinutes
+        - yellowCard
+        - redCard
+        - technicalFault
+        - timeout
+    NewEvent:
+      description: 'e.g. {type: goal, side: home, playerId: <Max>}; a save is recorded on the shooter (E1.3), a timeout has no player'
+      type: object
+      required:
+        - type
+        - side
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        leavingPlayerId:
+          type: string
+          description: For a penalty of a player on the bench, the field player who goes off (E5.4)
+    Event:
+      type: object
+      required:
+        - number
+        - type
+        - side
+        - gameTimeSeconds
+        - half
+      properties:
+        number:
+          type: integer
+        type:
+          $ref: '#/components/schemas/EventType'
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+          nullable: true
+        leavingPlayerId:
+          type: string
+          nullable: true
+        goalkeeperId:
+          type: string
+          nullable: true
+          description: The goalkeeper in the opposing goal for goals and saves (E1.2)
+        gameTimeSeconds:
+          type: integer
+        half:
+          type: integer
+    Score:
+      type: object
+      required:
+        - home
+        - away
+      properties:
+        home:
+          type: integer
+        away:
+          type: integer
+    RunningPenalty:
+      description: e.g. Max, 23 seconds left (L3)
+      type: object
+      required:
+        - side
+        - playerId
+        - remainingSeconds
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        remainingSeconds:
+          type: integer
+    Substitution:
+      type: object
+      required:
+        - side
+        - outId
+        - inId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        outId:
+          type: string
+        inId:
+          type: string
+        intoGoal:
+          type: boolean
+          description: Whether the incoming player goes into the free goal; without it a goalkeeper of the squad does (E5.6, E5.7)
+    ComeOn:
+      type: object
+      required:
+        - side
+        - playerId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        intoGoal:
+          type: boolean
+    IntoGoal:
+      type: object
+      required:
+        - side
+        - playerId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string

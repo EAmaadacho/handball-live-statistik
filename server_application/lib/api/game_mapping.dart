@@ -4,6 +4,8 @@ import '../domain/game_clock.dart';
 import '../domain/game_event.dart';
 import '../domain/game_team.dart';
 import '../domain/lineup.dart';
+import '../domain/rules.dart' as rules;
+import '../domain/score.dart';
 import '../storage/stored_game.dart';
 import 'team_mapping.dart';
 
@@ -13,6 +15,8 @@ api.Game toApiGame(StoredGame stored, DateTime now) {
   final game = stored.game;
   return api.Game(
     id: stored.id,
+    version: stored.version,
+    homeTeamId: stored.homeTeamId,
     date: stored.date,
     halfLengthMinutes: game.clock.halfLength.inMinutes,
     status: _statusOf(game.clock.phase),
@@ -21,8 +25,37 @@ api.Game toApiGame(StoredGame stored, DateTime now) {
     clock: _toApiClock(game.clock, now),
     homeLineup: _toApiLineup(game.lineupOf(Side.home)),
     awayLineup: _toApiLineup(game.lineupOf(Side.away)),
+    score: _toApiScore(game.score),
+    halfTimeScore: _toApiScore(game.halfTimeScore),
+    events: [
+      for (final event in game.events)
+        if (!rules.isLineupChange(event.type)) _toApiEvent(event),
+    ],
+    runningPenalties: [
+      for (final penalty in game.runningPenalties(now))
+        api.RunningPenalty(
+          side: api.Side.fromJson(penalty.side.name)!,
+          playerId: penalty.playerId,
+          remainingSeconds: penalty.remaining.inSeconds,
+        ),
+    ],
   );
 }
+
+api.Score _toApiScore(Score score) =>
+    api.Score(home: score.home, away: score.away);
+
+/// e.g. event 14, goal by Max at 23:14 (1394 seconds) in the first half.
+api.Event _toApiEvent(GameEvent event) => api.Event(
+      number: event.number,
+      type: api.EventType.fromJson(event.type.name)!,
+      side: api.Side.fromJson(event.side.name)!,
+      playerId: event.playerId,
+      leavingPlayerId: event.leavingPlayerId,
+      goalkeeperId: event.goalkeeperId,
+      gameTimeSeconds: event.gameTime.inSeconds,
+      half: event.half,
+    );
 
 /// The game with its ticker code, only for the team manager (S1.3).
 api.GameWithCode toApiGameWithCode(StoredGame stored, DateTime now) =>

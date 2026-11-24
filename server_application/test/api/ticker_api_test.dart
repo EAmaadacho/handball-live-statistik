@@ -1,65 +1,18 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:server_application/api/game_access.dart';
-import 'package:server_application/api/ticker_api.dart';
-import 'package:server_application/storage/game_repository.dart';
-import 'package:server_application/storage/stored_game.dart';
-import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 import '../domain/builders.dart';
-
-const noraInGoal = {
-  'goalkeeperId': 'p-nora',
-  'fieldPlayerIds': mettmannFieldPlayers,
-};
-const kaiInGoal = {
-  'goalkeeperId': 'p-kai',
-  'fieldPlayerIds': hildenFieldPlayers,
-};
+import 'ticker_harness.dart';
 
 void main() {
-  late Directory dir;
-  late DateTime now;
-  late TickerApi tickerApi;
+  late TickerHarness harness;
 
-  GameAccess openGames() =>
-      GameAccess(GameRepository.open('${dir.path}/games'), now: () => now);
+  setUp(() => harness = TickerHarness());
+  tearDown(() => harness.delete());
 
-  setUp(() {
-    dir = Directory.systemTemp.createTempSync('ticker_api_');
-    now = at(0);
-    final games = openGames();
-    games.games.save(StoredGame(
-      id: 'g1',
-      homeTeamId: 't1',
-      date: DateTime(2026, 11, 28, 18),
-      tickerCode: 'ticker-code',
-      game: aGame(),
-    ));
-    tickerApi = TickerApi(games);
-  });
-  tearDown(() => dir.deleteSync(recursive: true));
-
-  /// Sends one ticker request at the time [now], with the right code.
   Future<(int, dynamic)> send(String method, String path,
-      {Object? body, String? code = 'ticker-code'}) async {
-    final response = await tickerApi.router.call(Request(
-      method,
-      Uri.parse('http://localhost$path'),
-      body: body == null ? null : jsonEncode(body),
-      headers: {if (code != null) GameAccess.tickerCodeHeader: code},
-    ));
-    return (response.statusCode, jsonDecode(await response.readAsString()));
-  }
-
-  /// Both lineups set, kick-off at 15:00:00.
-  Future<void> kickOff() async {
-    await send('PUT', '/games/g1/lineups/home', body: noraInGoal);
-    await send('PUT', '/games/g1/lineups/away', body: kaiInGoal);
-    await send('POST', '/games/g1/clock/start');
-  }
+          {Object? body, String? code = 'ticker-code'}) =>
+      harness.send(method, path, body: body, code: code);
+  Future<void> kickOff() => harness.kickOff();
 
   group('E5_1 starting lineup', () {
     test('E5_1 Nora in goal, Max and Lisa in the field', () async {
@@ -105,7 +58,7 @@ void main() {
     test('U1 after kick-off at 15:00:00 the clock shows 5:00 at 15:05:00',
         () async {
       await kickOff();
-      now = at(5);
+      harness.now = at(5);
 
       final (_, json) = await send('POST', '/games/g1/clock/stop');
 
@@ -117,9 +70,9 @@ void main() {
     test('U1_1 stopped at 5:00, the clock still shows 5:00 two minutes later',
         () async {
       await kickOff();
-      now = at(5);
+      harness.now = at(5);
       await send('POST', '/games/g1/clock/stop');
-      now = at(7);
+      harness.now = at(7);
 
       final (_, json) = await send('POST', '/games/g1/clock/start');
 
@@ -139,7 +92,7 @@ void main() {
   group('U2 correct the time', () {
     test('U2 stopped at 23:14, the ticker corrects it to 23:05', () async {
       await kickOff();
-      now = at(23, 14);
+      harness.now = at(23, 14);
       await send('POST', '/games/g1/clock/stop');
 
       final (status, json) = await send('PUT', '/games/g1/clock',
@@ -163,7 +116,7 @@ void main() {
   group('U3 and U5 end of a half', () {
     test('U3_2 the clock stops by itself at 30:00', () async {
       await kickOff();
-      now = at(31);
+      harness.now = at(31);
 
       final (status, json) = await send('POST', '/games/g1/clock/stop');
 
@@ -174,9 +127,9 @@ void main() {
     test('U5_1 "Halbzeit" at 29:50 sets 30:00, the second half starts there',
         () async {
       await kickOff();
-      now = at(29, 50);
+      harness.now = at(29, 50);
       final (_, halfTime) = await send('POST', '/games/g1/clock/half-time');
-      now = at(45);
+      harness.now = at(45);
 
       final (_, secondHalf) = await send('POST', '/games/g1/clock/start');
 
@@ -188,11 +141,11 @@ void main() {
 
     test('U5_2 after "Spielende" the game is finished', () async {
       await kickOff();
-      now = at(30);
+      harness.now = at(30);
       await send('POST', '/games/g1/clock/half-time');
-      now = at(40);
+      harness.now = at(40);
       await send('POST', '/games/g1/clock/start');
-      now = at(70);
+      harness.now = at(70);
 
       final (_, json) = await send('POST', '/games/g1/clock/end');
 
@@ -205,9 +158,9 @@ void main() {
     test('U4_1 after a server restart the clock goes on: 12:00 at 15:12',
         () async {
       await kickOff();
-      now = at(12);
+      harness.now = at(12);
 
-      tickerApi = TickerApi(openGames());
+      harness.restartServer();
       final (_, json) = await send('POST', '/games/g1/clock/stop');
 
       expect(json['clock']['gameTimeSeconds'], 12 * 60);

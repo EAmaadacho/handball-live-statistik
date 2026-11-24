@@ -17,6 +17,7 @@ Map<String, Object?> storedGameToJson(StoredGame stored) {
     'homeTeamId': stored.homeTeamId,
     'date': stored.date.toIso8601String(),
     'tickerCode': stored.tickerCode,
+    'version': stored.version,
     'home': _gameTeamToJson(game.home),
     'away': _gameTeamToJson(game.away),
     'clock': _clockToJson(game.clock),
@@ -33,6 +34,7 @@ StoredGame storedGameFromJson(String id, Map<String, Object?> json) =>
       homeTeamId: json['homeTeamId'] as String,
       date: DateTime.parse(json['date'] as String),
       tickerCode: json['tickerCode'] as String,
+      version: json['version'] as int,
       game: Game.restore(
         home: _gameTeamFromJson(json['home'] as Map<String, Object?>),
         away: _gameTeamFromJson(json['away'] as Map<String, Object?>),

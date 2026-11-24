@@ -2,7 +2,9 @@ import 'package:openapi/api.dart' as api;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import '../domain/logo.dart';
 import '../domain/team.dart';
+import '../storage/logo_store.dart';
 import '../storage/team_repository.dart';
 import 'random_code.dart';
 import 'responses.dart';
@@ -17,12 +19,17 @@ class TeamApi {
   static const codeHeader = 'x-team-code';
 
   final TeamRepository _teams;
+  final LogoStore _logos;
   final String Function() _newCode;
   final String Function() _newId;
 
   /// [newCode] and [newId] can be replaced in tests to get fixed values.
-  TeamApi(this._teams, {String Function()? newCode, String Function()? newId})
-      : _newCode = newCode ?? randomCode,
+  TeamApi(this._teams,
+      {required LogoStore logos,
+      String Function()? newCode,
+      String Function()? newId})
+      : _logos = logos,
+        _newCode = newCode ?? randomCode,
         _newId = newId ?? (() => randomCode(8));
 
   Router get router => Router()
@@ -30,7 +37,9 @@ class TeamApi {
     ..get('/teams/<teamId>', _getTeam)
     ..post('/teams/<teamId>/players', _addPlayer)
     ..put('/teams/<teamId>/players/<playerId>', _updatePlayer)
-    ..delete('/teams/<teamId>/players/<playerId>', _removePlayer);
+    ..delete('/teams/<teamId>/players/<playerId>', _removePlayer)
+    ..put('/teams/<teamId>/logo', _uploadLogo)
+    ..get('/teams/<teamId>/logo', _getLogo);
 
   /// POST /teams: creates TV Mettmann Männer and answers with the code,
   /// which is never sent again (T1, T1.1, T1.2).
@@ -74,6 +83,26 @@ class TeamApi {
   Future<Response> _removePlayer(
           Request request, String teamId, String playerId) =>
       _changeTeam(request, teamId, (team) async => team.removePlayer(playerId));
+
+  /// PUT /teams/{teamId}/logo: the body is the image itself, e.g. the
+  /// PNG of TV Mettmann. Replaces an older logo (T6, T6.1).
+  Future<Response> _uploadLogo(Request request, String teamId) =>
+      _changeTeam(request, teamId, (team) async {
+        final bytes = await request.read().expand((chunk) => chunk).toList();
+        final fileType = checkLogo(bytes);
+        return team.withLogo(_logos.save(teamId, bytes, fileType));
+      });
+
+  /// GET /teams/{teamId}/logo: the logo for everyone, e.g. on the live
+  /// page. Without a logo 404, the app then shows the short code (T6.2).
+  Future<Response> _getLogo(Request request, String teamId) =>
+      withErrorAnswers(() async {
+        final logoRef = _find(teamId).logoRef;
+        final bytes = logoRef == null ? null : _logos.read(logoRef);
+        if (bytes == null) throw const HttpError(404, 'Kein Logo vorhanden.');
+        final type = logoRef!.endsWith('.png') ? 'image/png' : 'image/jpeg';
+        return Response.ok(bytes, headers: {'content-type': type});
+      });
 
   /// The steps every change shares: find the team (404), check the code
   /// (403), let [change] return the new team, save it and answer with it.

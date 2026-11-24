@@ -1,6 +1,7 @@
 import 'demo_data.dart';
 import 'game_source.dart';
 import 'models.dart';
+import 'statistics.dart';
 import 'ticker_rules.dart';
 
 /// Plays the server for the demo: TV Mettmann against HSG Hilden,
@@ -15,12 +16,12 @@ class DemoGameSource implements GameSource {
     _since = _clock();
   }
 
-  static const gameId = 17;
+  static const gameId = '17';
   static const teamCode = 'k7Qp2xVz9LmA4tRb';
   static const tickerCode = 'x9Fw3cNs7Ke2Hy5D';
 
   /// Game 18 has not started yet: the ticker sets up the lineup (E5.1).
-  static const nextGameId = 18;
+  static const nextGameId = '18';
   static const nextTickerCode = 'Pq4Lm8Rt2Wx6Zc1V';
   static const _tickerCodes = {gameId: tickerCode, nextGameId: nextTickerCode};
 
@@ -32,7 +33,7 @@ class DemoGameSource implements GameSource {
   /// Set to false to see how the pages behave without a connection (L1.1, E1.6).
   bool online = true;
 
-  final Map<int, GameState> _states = {
+  final Map<String, GameState> _states = {
     gameId: demoState,
     nextGameId: demoNextState,
   };
@@ -52,31 +53,37 @@ class DemoGameSource implements GameSource {
   };
 
   @override
-  Future<Game?> loadGame(int id) async => _states[id]?.game;
+  Future<Game?> loadGame(String id) async => _states[id]?.game;
 
   @override
   Future<Team?> loadTeamByCode(String code) async =>
       code == teamCode ? mettmann : null;
 
   @override
-  Future<bool> isTickerCode(int id, String code) async =>
+  Future<bool> isTickerCode(String id, String code) async =>
       _tickerCodes[id] == code;
 
   @override
-  Future<GameState?> loadState(int id) async {
+  Future<GameState?> loadState(String id) async {
     if (!online) throw StateError('Keine Verbindung');
     if (!_states.containsKey(id)) return null;
     return _now(id);
   }
 
   @override
-  Future<GameEvent> record(int id, String code, EventKind kind, Side side,
-      {String? playerId}) async {
+  Future<GameEvent> record(String id, String code, EventKind kind, Side side,
+      {String? playerId, String? leavingPlayerId}) async {
     final s = _forTicker(id, code);
     final reason = kind == EventKind.timeout
         ? timeoutBlockReason(s, side)
         : eventBlockReason(s, kind, side, playerId!);
     if (reason != null) throw RejectedAction(reason);
+    final sentOff = kind == EventKind.twoMinutes || kind == EventKind.redCard;
+    if (sentOff &&
+        !s.onField(side).contains(playerId) &&
+        leavingPlayerId == null) {
+      throw const RejectedAction('Bitte wählen, wer das Feld verlässt.');
+    }
 
     final team = s.game.team(side);
     final player = playerId == null ? null : team.player(playerId);
@@ -112,12 +119,27 @@ class DemoGameSource implements GameSource {
           clockRunning: false);
     }
     if (kind.isPunishment) next = _punish(next, kind, side, player!);
+    if (leavingPlayerId != null && next.penalties.length > s.penalties.length) {
+      // Paul gets 2 minutes on the bench, so Max goes off the field (E5.4).
+      next = next.copyWith(
+        field: {
+          ...next.field,
+          side: [
+            for (final p in next.field[side]!) p == leavingPlayerId ? null : p
+          ]
+        },
+        bench: {
+          ...next.bench,
+          side: [...next.bench[side]!, leavingPlayerId]
+        },
+      );
+    }
     _states[id] = next;
     return event;
   }
 
   @override
-  Future<void> deleteEvent(int id, String code, int number) async {
+  Future<void> deleteEvent(String id, String code, int number) async {
     final s = _forTicker(id, code);
     if (s.ended) throw const RejectedAction('Das Spiel ist beendet.');
     final matches = s.events.where((e) => e.number == number);
@@ -142,7 +164,7 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<void> substitute(
-      int id, String code, Side side, int place, String inPlayerId,
+      String id, String code, Side side, int place, String inPlayerId,
       {bool? intoGoal}) async {
     final s = _forTicker(id, code);
     final notRunning = gameNotRunningReason(s);
@@ -178,7 +200,7 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<void> putInGoal(
-      int id, String code, Side side, String playerId) async {
+      String id, String code, Side side, String playerId) async {
     final s = _forTicker(id, code);
     if (s.goalkeeperOf(side) case final keeper?) {
       final name = s.game.team(side).player(keeper).firstName;
@@ -198,18 +220,55 @@ class DemoGameSource implements GameSource {
   }
 
   @override
-  Future<void> toggleClock(int id, String code) async {
+  Future<void> toggleClock(String id, String code) async {
     final s = _forTicker(id, code);
     if (s.ended) throw const RejectedAction('Das Spiel ist beendet.');
     final linedUp = Side.values.every((side) => !s.field[side]!.contains(null));
     if (!s.started && !linedUp) {
       throw const RejectedAction('Bitte zuerst beide Teams aufstellen.');
     }
-    _states[id] = s.copyWith(clockRunning: !s.clockRunning);
+    final halfOver =
+        s.phase != GamePhase.halfTime && s.clockSeconds >= s.halfEndSeconds;
+    if (!s.clockRunning && halfOver) {
+      throw const RejectedAction(
+          'Die Halbzeit ist vorbei, bitte „Halbzeit“ drücken.');
+    }
+    _states[id] = s.copyWith(
+      clockRunning: !s.clockRunning,
+      phase: switch (s.phase) {
+        GamePhase.notStarted => GamePhase.firstHalf,
+        GamePhase.halfTime => GamePhase.secondHalf,
+        final phase => phase,
+      },
+    );
   }
 
   @override
-  Future<void> setLineup(int id, String code, Side side, String goalkeeperId,
+  Future<void> halfTime(String id, String code) async {
+    final s = _forTicker(id, code);
+    if (s.phase != GamePhase.firstHalf) {
+      throw const RejectedAction('„Halbzeit“ geht nur in der ersten Halbzeit.');
+    }
+    _states[id] = s.copyWith(
+      phase: GamePhase.halfTime,
+      clockRunning: false,
+      clockSeconds: s.game.halfMinutes * 60,
+      halftimeScore: '${s.goals[Side.home]}:${s.goals[Side.away]}',
+    );
+  }
+
+  @override
+  Future<void> endGame(String id, String code) async {
+    final s = _forTicker(id, code);
+    if (s.phase != GamePhase.secondHalf) {
+      throw const RejectedAction(
+          '„Spielende“ geht nur in der zweiten Halbzeit.');
+    }
+    _states[id] = s.copyWith(phase: GamePhase.finished, clockRunning: false);
+  }
+
+  @override
+  Future<void> setLineup(String id, String code, Side side, String goalkeeperId,
       List<String> fieldPlayerIds) async {
     final s = _forTicker(id, code);
     if (s.started) {
@@ -237,7 +296,7 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<void> addToMatchReport(
-      int id, String code, Side side, String playerId) async {
+      String id, String code, Side side, String playerId) async {
     final s = _forTicker(id, code);
     _checkLateRegistration(s, side);
     if (s.reportOf(side).contains(playerId)) {
@@ -247,7 +306,7 @@ class DemoGameSource implements GameSource {
   }
 
   @override
-  Future<Player> addSquadPlayer(int id, String code, Side side, int number,
+  Future<Player> addSquadPlayer(String id, String code, Side side, int number,
       String firstName, String lastName) async {
     final s = _forTicker(id, code);
     _checkLateRegistration(s, side);
@@ -268,7 +327,7 @@ class DemoGameSource implements GameSource {
 
   @override
   Future<void> removeFromMatchReport(
-      int id, String code, Side side, String playerId) async {
+      String id, String code, Side side, String playerId) async {
     final s = _forTicker(id, code);
     if (s.started) {
       throw const RejectedAction(
@@ -310,34 +369,17 @@ class DemoGameSource implements GameSource {
       {for (final side in Side.values) side: s.reportOf(side)};
 
   /// The current state, with the clock moved on since the last call.
-  ///
-  /// A player whose 2 minutes are over goes back to the bench (E5.4).
-  GameState _now(int id) {
+  GameState _now(String id) {
     final seconds = _clock().difference(_since).inSeconds;
     _since = _since.add(Duration(seconds: seconds));
     for (final game in _states.keys.toList()) {
-      _states[game] = _advanced(_states[game]!, seconds);
+      _states[game] = _states[game]!.advancedBy(seconds);
     }
     return _states[id]!;
   }
 
-  GameState _advanced(GameState before, int seconds) {
-    var next = before.advancedBy(seconds);
-    for (final p in before.penalties) {
-      final over =
-          !next.penalties.any((q) => q.side == p.side && q.label == p.label);
-      if (over && p.playerId != null) {
-        next = next.copyWith(bench: {
-          ...next.bench,
-          p.side: [...next.bench[p.side]!, p.playerId!]
-        });
-      }
-    }
-    return next;
-  }
-
   /// Checks connection and ticker code like the server would (ADR-005).
-  GameState _forTicker(int id, String code) {
+  GameState _forTicker(String id, String code) {
     if (!online) throw StateError('Keine Verbindung');
     if (_tickerCodes[id] != code) {
       throw const RejectedAction('Dieser Ticker-Link ist ungültig.');
@@ -413,45 +455,9 @@ class DemoGameSource implements GameSource {
 
   /// Statistics with [event] counted once more (times 1) or taken away (-1).
   Map<String, PlayerStats> _counted(
-      Map<String, PlayerStats> stats, GameEvent event, int times) {
-    final result = {...stats};
-    void add(String? id, PlayerStats change) {
-      if (id != null) {
-        result[id] = (result[id] ?? PlayerStats.none).plus(change, times);
-      }
-    }
-
-    final keeper = _goalkeeperOf[event.number];
-    switch (event.kind) {
-      case EventKind.goal:
-        add(event.playerId, const PlayerStats(goals: 1, shots: 1));
-        add(keeper, const PlayerStats(goalsAgainst: 1));
-      case EventKind.sevenMeterGoal:
-        add(
-            event.playerId,
-            const PlayerStats(
-                goals: 1, shots: 1, sevenMeterGoals: 1, sevenMeterShots: 1));
-        add(keeper, const PlayerStats(goalsAgainst: 1));
-      case EventKind.save:
-        add(event.playerId, const PlayerStats(shots: 1));
-        add(keeper, const PlayerStats(saves: 1));
-      case EventKind.miss:
-        add(event.playerId, const PlayerStats(shots: 1));
-      case EventKind.sevenMeterMiss:
-        add(event.playerId, const PlayerStats(shots: 1, sevenMeterShots: 1));
-      case EventKind.technicalFault:
-        add(event.playerId, const PlayerStats(technicalFaults: 1));
-      case EventKind.yellowCard:
-        add(event.playerId, const PlayerStats(yellowCards: 1));
-      case EventKind.twoMinutes:
-        add(event.playerId, const PlayerStats(twoMinutes: 1));
-      case EventKind.redCard:
-        add(event.playerId, const PlayerStats(redCards: 1));
-      case EventKind.timeout:
-        break;
-    }
-    return result;
-  }
+          Map<String, PlayerStats> stats, GameEvent event, int times) =>
+      statsWithEvent(stats, event,
+          goalkeeperId: _goalkeeperOf[event.number], times: times);
 
   /// The score after each event, counted again from the oldest (E2.1).
   ///

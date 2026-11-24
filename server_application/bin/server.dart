@@ -12,6 +12,7 @@ import 'package:server_application/api/team_api.dart';
 import 'package:server_application/api/ticker_api.dart';
 import 'package:server_application/storage/game_archive.dart';
 import 'package:server_application/storage/game_repository.dart';
+import 'package:server_application/storage/logo_store.dart';
 import 'package:server_application/storage/team_repository.dart';
 
 /// Names of the environment variables the server reads at start.
@@ -51,7 +52,7 @@ void main(List<String> args) async {
   // The first router that knows the path answers; the others give 404.
   final routes = Cascade()
       .add(_router.call)
-      .add(TeamApi(teams).router.call)
+      .add(TeamApi(teams, logos: LogoStore('$dataDir/logos')).router.call)
       .add(GameApi(teams, games).router.call)
       .add(TickerApi(games).router.call);
   final handler = Pipeline()

@@ -66,7 +66,7 @@ void main() {
     expect(find.text('TVM 7/7 · HSG 7/7'), findsOneWidget);
 
     await _tap(tester, _key('Kickoff'));
-    final state = (await source.loadState(18))!;
+    final state = (await source.loadState('18'))!;
     expect(state.clockRunning, isTrue);
     expect(state.field[Side.home], _home);
     expect(state.goalkeeperOf(Side.away), 'a1');
@@ -126,7 +126,7 @@ void main() {
     await _tap(tester, _key('RemoveFromReport'));
 
     expect(_key('BenchPlayer-erik15'), findsNothing);
-    final state = (await source.loadState(18))!;
+    final state = (await source.loadState('18'))!;
     expect(state.reportOf(Side.home), isNot(contains('erik15')));
   });
 }

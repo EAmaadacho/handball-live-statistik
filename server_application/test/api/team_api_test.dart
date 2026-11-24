@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:server_application/api/team_api.dart';
+import 'package:server_application/storage/logo_store.dart';
 import 'package:server_application/storage/team_repository.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -45,6 +46,7 @@ void main() {
     var ids = 0;
     teamApi = TeamApi(
       TeamRepository.open('${dir.path}/teams.json'),
+      logos: LogoStore('${dir.path}/logos'),
       newCode: () => 'secret-code',
       newId: () => 'id-${++ids}',
     );
@@ -211,7 +213,8 @@ void main() {
       await send(teamApi, 'POST', '/teams/id-1/players',
           body: max, code: 'secret-code');
 
-      final restarted = TeamApi(TeamRepository.open('${dir.path}/teams.json'));
+      final restarted = TeamApi(TeamRepository.open('${dir.path}/teams.json'),
+          logos: LogoStore('${dir.path}/logos'));
       final (_, json) = await send(restarted, 'GET', '/teams/id-1');
 
       expect(json['players'].single['firstName'], 'Max');

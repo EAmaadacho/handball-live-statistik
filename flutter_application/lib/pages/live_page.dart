@@ -36,7 +36,7 @@ enum LiveTab {
 class LivePage extends StatefulWidget {
   const LivePage({super.key, required this.gameId});
 
-  final int gameId;
+  final String gameId;
 
   @override
   State<LivePage> createState() => _LivePageState();

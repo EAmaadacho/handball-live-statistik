@@ -55,6 +55,19 @@ void main() {
     expect(_homeGoals(tester), '14');
   });
 
+  testWidgets('E5_4 2 minutes for Tom on the bench: the ticker picks Paul',
+      (tester) async {
+    final source = await _openTicker(tester);
+    await _tap(tester, _key('BenchPlayer-tom9'));
+    await _tap(tester, _key('Action-2 Minuten'));
+    expect(find.text('Wer verlässt dafür das Feld?'), findsOneWidget);
+
+    await _tap(tester, _key('Choose-paul11'));
+    final state = (await source.loadState('17'))!;
+    expect(state.onField(Side.home), isNot(contains('paul11')));
+    expect(state.penalties.where((p) => p.label == '9'), hasLength(1));
+  });
+
   testWidgets('E5_2 Max goes to the bench, Tom comes on', (tester) async {
     final source = await _openTicker(tester);
     await _tap(tester, _key('Court-home-2'));
@@ -62,7 +75,7 @@ void main() {
     expect(_key('SwapBanner'), findsOneWidget);
 
     await _tap(tester, _key('BenchPlayer-tom9'));
-    final state = (await source.loadState(17))!;
+    final state = (await source.loadState('17'))!;
     expect(state.field[Side.home]![2], 'tom9');
     expect(state.bench[Side.home], contains('max7'));
     expect(_key('BenchPlayer-max7'), findsOneWidget);
@@ -90,7 +103,7 @@ void main() {
     expect(find.text('Wer geht dafür vom Feld?'), findsOneWidget);
     await _tap(tester, _key('Choose-ben5'));
 
-    final state = (await source.loadState(17))!;
+    final state = (await source.loadState('17'))!;
     expect(state.field[Side.home]![0], 'mia16');
     expect(state.onField(Side.home), isNot(contains('ben5')));
     expect(state.onField(Side.home).length, 6);
@@ -168,7 +181,7 @@ void main() {
     expect(find.text('Wie spielt 9 Tom?'), findsOneWidget);
     await _tap(tester, _key('Role-fieldPlayer'));
 
-    final state = (await source.loadState(17))!;
+    final state = (await source.loadState('17'))!;
     expect(state.goalkeeperOf(Side.home), isNull);
     expect(state.onField(Side.home).length, 6);
     expect(_message(tester), contains('Tor leer'));
@@ -177,7 +190,7 @@ void main() {
     await _tap(tester, _key('Court-home-0'));
     await _tap(tester, _key('Action-Wechseln'));
     await _tap(tester, _key('BenchPlayer-nora1'));
-    expect((await source.loadState(17))!.goalkeeperOf(Side.home), 'nora1');
+    expect((await source.loadState('17'))!.goalkeeperOf(Side.home), 'nora1');
   });
 
   testWidgets(
@@ -189,7 +202,7 @@ void main() {
     await _tap(tester, _key('BenchPlayer-tom9'));
     await _tap(tester, _key('Role-goalkeeper'));
 
-    expect((await source.loadState(17))!.goalkeeperOf(Side.home), 'tom9');
+    expect((await source.loadState('17'))!.goalkeeperOf(Side.home), 'tom9');
     await _tap(tester, _key('Court-home-0'));
     expect(find.text('Im Tor · Feldspieler mit Torwarttrikot'), findsOneWidget);
   });
@@ -204,7 +217,7 @@ void main() {
     await _tap(tester, _key('Court-home-2')); // Max
     await _tap(tester, _key('Action-Ins Tor'));
 
-    final state = (await source.loadState(17))!;
+    final state = (await source.loadState('17'))!;
     expect(state.goalkeeperOf(Side.home), 'max7');
     expect(state.field[Side.home]![0], 'max7');
     expect(_message(tester), '7 Max geht ins Tor und zählt jetzt als Torwart.');

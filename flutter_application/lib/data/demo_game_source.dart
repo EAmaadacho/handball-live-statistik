@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'demo_data.dart';
 import 'game_source.dart';
 import 'models.dart';
@@ -82,6 +84,18 @@ class DemoGameSource implements GameSource {
       goalkeepers: const {Side.home: null, Side.away: null},
       matchReport: reports,
     );
+  }
+
+  /// The new logo of team [teamId] also on the scoreboard and court of its
+  /// games, e.g. TV Mettmann in game 17 (T6).
+  void showLogo(String teamId, Uint8List logo) {
+    for (final MapEntry(:key, :value) in [..._states.entries]) {
+      if (value.game.home.id == teamId) {
+        _states[key] = value.copyWith(
+            game:
+                value.game.withTeam(Side.home, value.game.home.withLogo(logo)));
+      }
+    }
   }
 
   /// The state of game [id] right now, e.g. for the status in the team

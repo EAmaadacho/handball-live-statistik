@@ -1,8 +1,14 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_application/data/demo_game_source.dart';
 import 'package:flutter_application/data/demo_team_source.dart';
 import 'package:flutter_application/data/game_source.dart';
 import 'package:flutter_application/data/team_source.dart';
+import 'package:flutter_application/data/logo_check.dart';
 import 'package:flutter_application/main.dart';
+import 'package:flutter_application/pages/team_page.dart';
+import 'package:flutter_application/theme/app_theme.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:openapi/api.dart';
@@ -28,6 +34,32 @@ Future<DemoTeamSource> _open(WidgetTester tester, String location) async {
   );
   await tester.pumpAndSettle();
   return teams;
+}
+
+/// A real PNG of 1 × 1 pixel, as the logo of TV Mettmann.
+final _png = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+
+/// The team management of TV Mettmann; [file] is what the file dialog gives.
+Future<(DemoTeamSource, DemoGameSource)> _openWithFile(
+    WidgetTester tester, Uint8List? file) async {
+  tester.view.physicalSize = const Size(800, 1400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final games = DemoGameSource();
+  final teams = DemoTeamSource(games);
+  await tester.pumpWidget(Provider<TeamSource>.value(
+    value: teams,
+    child: MaterialApp(
+      theme: buildHallTheme(),
+      home: TeamPage(
+          teamId: DemoTeamSource.teamId,
+          code: DemoTeamSource.teamCode,
+          pickLogo: () async => file),
+    ),
+  ));
+  await tester.pumpAndSettle();
+  return (teams, games);
 }
 
 Finder _key(String key) => find.byKey(Key(key));
@@ -150,5 +182,35 @@ void main() {
     await _enter(tester, 'OpponentNumber-0', '5');
     await _tap(tester, _key('CreateGameSubmit'));
     expect(find.textContaining('Spieler 1: bitte Nummer'), findsOneWidget);
+  });
+
+  testWidgets('T6 TV Mettmann uploads its logo, the ticker shows it too',
+      (tester) async {
+    final (teams, games) = await _openWithFile(tester, _png);
+    expect(find.text('TVM'), findsWidgets);
+    await _tap(tester, _key('UploadLogo'));
+    expect(find.text('Logo gespeichert.'), findsOneWidget);
+    expect(_key('TeamLogo'), findsOneWidget);
+    expect(find.text('Logo ändern'), findsOneWidget);
+    final team =
+        await teams.loadTeam(DemoTeamSource.teamId, DemoTeamSource.teamCode);
+    expect(team!.logo, _png);
+    expect(games.stateOf(DemoGameSource.gameId)!.game.home.logo, _png);
+  });
+
+  testWidgets('T6_1 a GIF is refused with the server\'s text', (tester) async {
+    final gif = Uint8List.fromList(ascii.encode('GIF89a......'));
+    await _openWithFile(tester, gif);
+    await _tap(tester, _key('UploadLogo'));
+    expect(
+        find.text('Bitte ein PNG- oder JPG-Bild hochladen.'), findsOneWidget);
+    expect(_key('TeamLogo'), findsNothing);
+  });
+
+  test('T6_1 a PNG over 500 KB is refused before sending', () {
+    final big = Uint8List(maxLogoBytes + 1)..setAll(0, _png.take(8));
+    expect(logoProblem(big), 'Das Logo darf höchstens 500 KB groß sein.');
+    expect(logoProblem(_png), isNull);
+    expect(logoProblem(Uint8List.fromList([0xFF, 0xD8, 0xFF, 0])), isNull);
   });
 }

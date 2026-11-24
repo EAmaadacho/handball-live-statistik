@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'models.dart';
 
 /// The age groups as in nuLiga (T1), e.g. "männliche Jugend B".
@@ -139,6 +141,9 @@ abstract class TeamSource {
   Future<Team> updatePlayer(
       String teamId, String code, String playerId, SquadEntry player);
   Future<Team> removePlayer(String teamId, String code, String playerId);
+
+  /// Uploads or replaces the club logo, PNG or JPG up to 500 KB (T6, T6.1).
+  Future<Team> uploadLogo(String teamId, String code, Uint8List logo);
 
   /// All games of the team, by date (S1.3).
   Future<List<TeamGame>> loadGames(String teamId, String code);

@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:openapi/api.dart' as api;
 
 import 'api_errors.dart';
+import 'api_team_source.dart' show fetchLogo;
 import 'game_source.dart';
 import 'models.dart';
 import 'server_game.dart';
@@ -44,6 +47,9 @@ class ApiGameSource implements GameSource {
 
   /// Squads of registered teams, by team id, loaded once (S1.4).
   final Map<String, api.Team?> _squads = {};
+
+  /// Club logos by team id, loaded once (T6).
+  final Map<String, Uint8List?> _logos = {};
 
   // ------------------------------------------------------------------ read
 
@@ -239,8 +245,13 @@ class ApiGameSource implements GameSource {
     final squad = _squads.containsKey(game.homeTeamId)
         ? _squads[game.homeTeamId]
         : _squads[game.homeTeamId] = await _loadSquad(game.homeTeamId);
+    if (squad != null && squad.hasLogo) {
+      _logos[squad.id] ??= await fetchLogo(_teams, squad.id);
+    }
     final state = gameStateFrom(game,
-        homeSquad: squad, before: before ?? _answers[game.id]?.state);
+        homeSquad: squad,
+        homeLogo: _logos[game.homeTeamId],
+        before: before ?? _answers[game.id]?.state);
     return _answers[game.id] = _Answer(game, state, _now());
   }
 

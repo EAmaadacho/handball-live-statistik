@@ -1,8 +1,22 @@
+import 'dart:typed_data';
+
+import 'package:http/http.dart' show MultipartFile;
 import 'package:openapi/api.dart' as api;
 
 import 'api_errors.dart';
 import 'models.dart';
 import 'team_source.dart';
+
+/// The logo of team [teamId] as PNG or JPG bytes, null if there is none or
+/// it cannot be loaded; then the short name stands in the circle (T6.2).
+Future<Uint8List?> fetchLogo(api.TeamsApi teams, String teamId) async {
+  try {
+    final response = await teams.getLogoWithHttpInfo(teamId);
+    return response.statusCode == 200 ? response.bodyBytes : null;
+  } on api.ApiException {
+    return null;
+  }
+}
 
 /// The team management over the Dart server (api.yaml, T1, T2, S1).
 ///
@@ -32,7 +46,7 @@ class ApiTeamSource implements TeamSource {
   Future<Team?> loadTeam(String teamId, String code) async {
     try {
       await _games.getTeamGames(teamId, code);
-      return _team((await _teams.getTeam(teamId))!);
+      return await _withLogo((await _teams.getTeam(teamId))!);
     } on api.ApiException catch (e) {
       if (e.innerException == null && (e.code == 403 || e.code == 404)) {
         return null;
@@ -43,19 +57,26 @@ class ApiTeamSource implements TeamSource {
 
   @override
   Future<Team> addPlayer(String teamId, String code, SquadEntry player) async =>
-      _team((await _call(
+      _withLogo((await _call(
           () => _teams.addPlayer(teamId, code, _apiPlayer(player))))!);
+
+  /// The server checks PNG/JPG and 500 KB by the bytes themselves (T6.1).
+  @override
+  Future<Team> uploadLogo(String teamId, String code, Uint8List logo) async =>
+      _withLogo((await _call(() => _teams.uploadLogo(
+          teamId, code, MultipartFile.fromBytes('logo', logo))))!);
 
   @override
   Future<Team> updatePlayer(String teamId, String code, String playerId,
           SquadEntry player) async =>
-      _team((await _call(() =>
+      _withLogo((await _call(() =>
           _teams.updatePlayer(teamId, code, playerId, _apiPlayer(player))))!);
 
   @override
   Future<Team> removePlayer(
           String teamId, String code, String playerId) async =>
-      _team((await _call(() => _teams.removePlayer(teamId, code, playerId)))!);
+      _withLogo(
+          (await _call(() => _teams.removePlayer(teamId, code, playerId)))!);
 
   @override
   Future<List<TeamGame>> loadGames(String teamId, String code) async {
@@ -103,8 +124,13 @@ class ApiTeamSource implements TeamSource {
       position:
           p.isGoalkeeper ? api.Position.goalkeeper : api.Position.fieldPlayer);
 
-  static Team _team(api.Team team) => Team(
+  /// The team as the pages show it, with the logo bytes if it has one.
+  Future<Team> _withLogo(api.Team team) async =>
+      _team(team, team.hasLogo ? await fetchLogo(_teams, team.id) : null);
+
+  static Team _team(api.Team team, Uint8List? logo) => Team(
         id: team.id,
+        logo: logo,
         name: team.displayName,
         shortName: team.shortCode,
         players: [

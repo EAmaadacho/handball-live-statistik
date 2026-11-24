@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'demo_data.dart';
 import 'demo_game_source.dart';
 import 'game_source.dart';
+import 'logo_check.dart';
 import 'models.dart';
 import 'team_source.dart';
 
@@ -105,6 +108,14 @@ class DemoTeamSource implements TeamSource {
   }
 
   @override
+  Future<Team> uploadLogo(String teamId, String code, Uint8List logo) async {
+    final entry = _forManager(teamId, code);
+    if (logoProblem(logo) case final problem?) throw RejectedAction(problem);
+    games.showLogo(teamId, logo);
+    return entry.team = entry.team.withLogo(logo);
+  }
+
+  @override
   Future<List<TeamGame>> loadGames(String teamId, String code) async {
     final entry = _forManager(teamId, code);
     return [
@@ -199,5 +210,6 @@ class DemoTeamSource implements TeamSource {
       shortName: team.shortName,
       players: players,
       officials: team.officials,
-      gameSquadOnly: team.gameSquadOnly);
+      gameSquadOnly: team.gameSquadOnly,
+      logo: team.logo);
 }

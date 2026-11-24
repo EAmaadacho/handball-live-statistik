@@ -30,10 +30,11 @@ void main() {
   test('R2 the third 2 minutes of Max mean red, deleting it lifts it (E2_2)',
       () async {
     final numbers = <int>[];
-    for (var i = 0; i < 3; i++) {
+    // From the bench, someone on the field has to go off for Max (E5.4).
+    for (final leaving in [null, 'paul11', 'nora1']) {
       final event = await source.record(
           _id, _code, EventKind.twoMinutes, Side.home,
-          playerId: 'max7');
+          playerId: 'max7', leavingPlayerId: leaving);
       numbers.add(event.number);
       time = time.add(const Duration(seconds: 121)); // Max back on the bench
     }
@@ -55,12 +56,51 @@ void main() {
 
   test('R3 a disqualified player gets no events', () async {
     await source.record(_id, _code, EventKind.redCard, Side.home,
-        playerId: 'tom9');
+        playerId: 'tom9', leavingPlayerId: 'paul11');
     expect(
         () => source.record(_id, _code, EventKind.yellowCard, Side.home,
             playerId: 'tom9'),
         throwsA(isA<RejectedAction>()
             .having((e) => e.message, 'message', 'Tom ist disqualifiziert.')));
+  });
+
+  test('E5_4 2 minutes for Tom on the bench: Paul goes off the field',
+      () async {
+    expect(
+        () => source.record(_id, _code, EventKind.twoMinutes, Side.home,
+            playerId: 'tom9'),
+        throwsA(isA<RejectedAction>().having((e) => e.message, 'message',
+            'Bitte wählen, wer das Feld verlässt.')));
+    await source.record(_id, _code, EventKind.twoMinutes, Side.home,
+        playerId: 'tom9', leavingPlayerId: 'paul11');
+    final s = await now();
+    expect(s.onField(Side.home), isNot(contains('paul11')));
+    expect(s.bench[Side.home], contains('paul11'));
+  });
+
+  test('U5 half time stops the clock at 30:00, the next start is half 2',
+      () async {
+    const next = DemoGameSource.nextGameId;
+    const code = DemoGameSource.nextTickerCode;
+    final lineup = (await source.loadState(next))!.reportOf(Side.home);
+    final guests = (await source.loadState(next))!.reportOf(Side.away);
+    await source.setLineup(
+        next, code, Side.home, lineup[0], lineup.sublist(1, 7));
+    await source.setLineup(
+        next, code, Side.away, guests[0], guests.sublist(1, 7));
+    await source.toggleClock(next, code);
+    time = time.add(const Duration(minutes: 31));
+    var s = (await source.loadState(next))!;
+    expect((s.clockSeconds, s.clockRunning), (1800, false));
+    expect(
+        () => source.toggleClock(next, code), throwsA(isA<RejectedAction>()));
+
+    await source.halfTime(next, code);
+    await source.toggleClock(next, code);
+    s = (await source.loadState(next))!;
+    expect((s.phase, s.half, s.clockRunning), (GamePhase.secondHalf, 2, true));
+    await source.endGame(next, code);
+    expect((await source.loadState(next))!.ended, isTrue);
   });
 
   test('R7 a goal for a bench player is refused', () async {

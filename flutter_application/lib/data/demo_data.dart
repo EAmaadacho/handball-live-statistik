@@ -78,7 +78,7 @@ const demoHilden = Team(
   ],
 );
 
-const demoGame = Game(id: 17, home: demoMettmann, away: demoHilden);
+const demoGame = Game(id: '17', home: demoMettmann, away: demoHilden);
 
 /// 38:47 in the second half, 14:12, Nico (8) sits out a penalty.
 const demoState = GameState(
@@ -86,6 +86,7 @@ const demoState = GameState(
   goals: {Side.home: 14, Side.away: 12},
   clockSeconds: 38 * 60 + 47,
   clockRunning: true,
+  phase: GamePhase.secondHalf,
   timeouts: {Side.home: 1, Side.away: 2},
   penalties: [
     Penalty(side: Side.away, label: '8', secondsLeft: 82, playerId: 'a8')
@@ -207,7 +208,7 @@ const demoState = GameState(
   },
 );
 
-const demoNextGame = Game(id: 18, home: demoMettmann, away: demoHilden);
+const demoNextGame = Game(id: '18', home: demoMettmann, away: demoHilden);
 
 /// Game 18 before kick-off: nobody on the field yet, everyone on the bench.
 const demoNextState = GameState(
@@ -215,6 +216,7 @@ const demoNextState = GameState(
   goals: {Side.home: 0, Side.away: 0},
   clockSeconds: 0,
   clockRunning: false,
+  phase: GamePhase.notStarted,
   timeouts: {Side.home: 0, Side.away: 0},
   field: {
     Side.home: [null, null, null, null, null, null, null],

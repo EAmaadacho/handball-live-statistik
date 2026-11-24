@@ -48,7 +48,12 @@ class Scoreboard extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
-                  Text(state.ended ? 'ENDE' : '${state.half}. HALBZEIT',
+                  Text(
+                      switch (state.phase) {
+                        GamePhase.finished => 'ENDE',
+                        GamePhase.halfTime => 'HALBZEITPAUSE',
+                        _ => '${state.half}. HALBZEIT',
+                      },
                       style: label),
                   Text(
                     formatClock(state.clockSeconds),
@@ -65,7 +70,9 @@ class Scoreboard extends StatelessWidget {
                     Text(
                       state.clockRunning
                           ? 'LÄUFT · TIPPEN = STOPP'
-                          : 'GESTOPPT · TIPPEN = START',
+                          : state.phase == GamePhase.halfTime
+                              ? 'TIPPEN = 2. HALBZEIT'
+                              : 'GESTOPPT · TIPPEN = START',
                       style: label.copyWith(
                           color: state.clockRunning
                               ? colors.onBoard

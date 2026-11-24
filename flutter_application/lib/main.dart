@@ -4,24 +4,30 @@ import 'package:material_ui/material_ui.dart';
 import 'package:openapi/api.dart';
 import 'package:provider/provider.dart';
 
+import 'data/api_game_source.dart';
 import 'data/demo_game_source.dart';
 import 'data/game_source.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
 /// Address of the Dart server, see server_application/bin/server.dart.
-const serverUrl = 'http://127.0.0.1:8080';
+///
+/// Given at start: `flutter run --dart-define=SERVER_URL=http://127.0.0.1:8080`.
+/// Without it the app shows the demo game (DemoGameSource).
+const serverUrl = String.fromEnvironment('SERVER_URL');
 
 void main() {
   // Addresses without "#", so a link looks like /spiel/17/live (ADR-005).
   usePathUrlStrategy();
-  final api = HealthApi(ApiClient(basePath: serverUrl));
+  final client = ApiClient(
+      basePath: serverUrl.isEmpty ? 'http://127.0.0.1:8080' : serverUrl);
   runApp(
     MultiProvider(
       providers: [
-        Provider<HealthApi>.value(value: api),
-        // Example data until the server endpoints exist (Bauplan step 7).
-        Provider<GameSource>.value(value: DemoGameSource()),
+        Provider<HealthApi>.value(value: HealthApi(client)),
+        Provider<GameSource>.value(
+            value:
+                serverUrl.isEmpty ? DemoGameSource() : ApiGameSource(client)),
       ],
       child: const HandballApp(),
     ),

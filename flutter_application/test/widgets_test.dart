@@ -120,7 +120,7 @@ void main() {
       const base = DemoGameSource.mettmann;
       final full = GameState(
         game: Game(
-          id: 1,
+          id: '1',
           home: Team(
             id: base.id,
             name: base.name,
@@ -136,6 +136,7 @@ void main() {
         goals: const {Side.home: 0, Side.away: 0},
         clockSeconds: 0,
         clockRunning: false,
+        phase: GamePhase.notStarted,
         timeouts: const {Side.home: 0, Side.away: 0},
         field: {
           Side.home: ids.sublist(0, 7),

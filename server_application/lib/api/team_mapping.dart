@@ -14,6 +14,7 @@ api.Team toApiTeam(String id, Team team) => api.Team(
       name: toApiName(team.name),
       displayName: team.name.display,
       shortCode: team.shortCode,
+      hasLogo: team.logoRef != null,
       players: [for (final player in team.squad) toApiPlayer(player)],
     );
 

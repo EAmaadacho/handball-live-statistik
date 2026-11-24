@@ -71,6 +71,59 @@ paths:
                 $ref: '#/components/schemas/Team'
         '404':
           $ref: '#/components/responses/NotFound'
+  /teams/{teamId}/logo:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+    get:
+      tags:
+        - teams
+      summary: The club logo, for everyone (T6)
+      operationId: getLogo
+      responses:
+        '200':
+          description: The logo as PNG or JPG
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - teams
+      summary: Uploads or replaces the club logo, PNG or JPG up to 500 KB (T6, T6.1)
+      operationId: uploadLogo
+      parameters:
+        - $ref: '#/components/parameters/TeamCode'
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: The team with hasLogo true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
   /teams/{teamId}/players:
     parameters:
       - $ref: '#/components/parameters/TeamId'
@@ -755,6 +808,7 @@ components:
         - name
         - displayName
         - shortCode
+        - hasLogo
         - players
       properties:
         id:
@@ -766,6 +820,9 @@ components:
           description: e.g. "TV Mettmann Männer II"
         shortCode:
           type: string
+        hasLogo:
+          type: boolean
+          description: Without a logo the app shows the short code in a circle (T6.2)
         players:
           type: array
           items:

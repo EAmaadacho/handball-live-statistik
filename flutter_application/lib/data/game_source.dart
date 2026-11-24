@@ -23,9 +23,6 @@ abstract class GameSource {
   /// The game with [id], or null if there is none.
   Future<Game?> loadGame(String id);
 
-  /// The team that belongs to the secret [teamCode], or null (ADR-005).
-  Future<Team?> loadTeamByCode(String teamCode);
-
   /// What happens in game [id] right now, or null if there is no such game.
   Future<GameState?> loadState(String id);
 

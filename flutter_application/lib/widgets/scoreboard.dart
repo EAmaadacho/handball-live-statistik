@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../data/models.dart';
 import '../theme/app_theme.dart';
 import 'format.dart';
+import 'team_badge.dart';
 
 /// The dark LED board on top of ticker and live page.
 ///
@@ -114,13 +115,30 @@ class _TeamColumn extends StatelessWidget {
       crossAxisAlignment:
           right ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        Text(
-          team.shortName,
-          style: TextStyle(
-              color: colors.onBoard,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2),
+        // Logo (or short name in a circle) next to the short name (T6).
+        // On a very narrow board both get smaller instead of overflowing.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            textDirection: right ? TextDirection.rtl : TextDirection.ltr,
+            children: [
+              TeamBadge(
+                  team: team,
+                  size: large ? 26 : 20,
+                  color: right ? colors.away : colors.home,
+                  onColor: right ? colors.onAway : colors.onHome),
+              const SizedBox(width: 6),
+              Text(
+                team.shortName,
+                style: TextStyle(
+                    color: colors.onBoard,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2),
+              ),
+            ],
+          ),
         ),
         Text(
           '${state.goals[side]}',

@@ -2,6 +2,8 @@
 /// (package openapi); the pages do not notice the difference.
 library;
 
+import 'dart:typed_data';
+
 class Player {
   const Player({
     required this.id,
@@ -37,6 +39,7 @@ class Team {
     this.players = const [],
     this.officials = const [],
     this.gameSquadOnly = false,
+    this.logo,
   });
 
   final String id;
@@ -51,6 +54,9 @@ class Team {
   /// game (Spielkader, S1.1). Late players are typed in with number and name.
   final bool gameSquadOnly;
 
+  /// The club logo as PNG or JPG bytes, null without logo (T6, T6.2).
+  final Uint8List? logo;
+
   /// The same team with [player] added, e.g. a late player of the opponent.
   Team withPlayer(Player player) => Team(
       id: id,
@@ -58,7 +64,18 @@ class Team {
       shortName: shortName,
       players: [...players, player],
       officials: officials,
-      gameSquadOnly: gameSquadOnly);
+      gameSquadOnly: gameSquadOnly,
+      logo: logo);
+
+  /// The same team with the club logo [logo] (T6).
+  Team withLogo(Uint8List logo) => Team(
+      id: id,
+      name: name,
+      shortName: shortName,
+      players: players,
+      officials: officials,
+      gameSquadOnly: gameSquadOnly,
+      logo: logo);
 
   /// The player with [id], e.g. player('max7') → Max Mustermann.
   Player player(String id) => players.firstWhere((p) => p.id == id);

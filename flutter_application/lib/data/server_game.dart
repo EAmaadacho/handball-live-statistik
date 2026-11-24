@@ -6,6 +6,8 @@
 /// after each event, cards and timeouts are read here from the events.
 library;
 
+import 'dart:typed_data';
+
 import 'package:openapi/api.dart' as api;
 
 import 'models.dart';
@@ -14,11 +16,13 @@ import 'models.dart';
 ///
 /// [homeSquad] is the whole squad of the registered home team: players not
 /// on the match report can be registered late (S1.4).
+/// [homeLogo] is the club logo of the home team, if it has one (T6).
 /// [before] is the last state the app showed: everybody keeps their place
 /// on the court, because the server only sends who is on the field.
 GameState gameStateFrom(api.Game game,
-    {api.Team? homeSquad, GameState? before}) {
-  final home = _team(game.homeTeamId, game.home, squad: homeSquad);
+    {api.Team? homeSquad, Uint8List? homeLogo, GameState? before}) {
+  final home =
+      _team(game.homeTeamId, game.home, squad: homeSquad, logo: homeLogo);
   final away = _team('${game.id}-away', game.away, gameSquadOnly: true);
   final theGame = Game(
       id: game.id, home: home, away: away, halfMinutes: game.halfLengthMinutes);
@@ -124,13 +128,14 @@ List<String?> placesOf(api.Lineup? lineup, List<String?>? before) {
 Side _side(api.Side side) => side == api.Side.home ? Side.home : Side.away;
 
 Team _team(String id, api.GameTeam team,
-    {api.Team? squad, bool gameSquadOnly = false}) {
+    {api.Team? squad, Uint8List? logo, bool gameSquadOnly = false}) {
   final onReport = {for (final p in team.players) p.id};
   return Team(
     id: id,
     name: team.displayName,
     shortName: team.shortCode,
     gameSquadOnly: gameSquadOnly,
+    logo: logo,
     players: [
       for (final p in team.players) _player(p),
       // Squad players not on the match report, e.g. Leon, who comes late.

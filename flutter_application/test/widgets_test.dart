@@ -59,6 +59,21 @@ void main() {
       expect(find.text('Lukas'), findsOneWidget);
     });
 
+    testWidgets('T6_2 without logo the short names stand faded in each half',
+        (tester) async {
+      await _show(
+          tester, const SizedBox(width: 300, child: Court(state: _state)));
+      final home = tester.getCenter(find.byKey(const Key('CourtBadge-home')));
+      final away = tester.getCenter(find.byKey(const Key('CourtBadge-away')));
+      expect(home.dy, greaterThan(away.dy));
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('CourtBadge-home')),
+              matching: find.text('TVM')),
+          findsOneWidget);
+      expect(find.byKey(const Key('TeamLogo')), findsNothing);
+    });
+
     testWidgets('empty place shows its short name', (tester) async {
       await _show(
           tester, const SizedBox(width: 300, child: Court(state: _state)));

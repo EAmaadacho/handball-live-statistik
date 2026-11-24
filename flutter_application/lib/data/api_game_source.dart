@@ -1,7 +1,9 @@
-import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:openapi/api.dart' as api;
 
+import 'api_errors.dart';
+import 'api_team_source.dart' show fetchLogo;
 import 'game_source.dart';
 import 'models.dart';
 import 'server_game.dart';
@@ -46,15 +48,13 @@ class ApiGameSource implements GameSource {
   /// Squads of registered teams, by team id, loaded once (S1.4).
   final Map<String, api.Team?> _squads = {};
 
+  /// Club logos by team id, loaded once (T6).
+  final Map<String, Uint8List?> _logos = {};
+
   // ------------------------------------------------------------------ read
 
   @override
   Future<Game?> loadGame(String id) async => (await loadState(id))?.game;
-
-  /// The team page follows in Bauplan step 6 (GET /teams/{teamId} with
-  /// X-Team-Code); until then no team code opens it.
-  @override
-  Future<Team?> loadTeamByCode(String teamCode) async => null;
 
   @override
   Future<GameState?> loadState(String id) async {
@@ -236,7 +236,7 @@ class ApiGameSource implements GameSource {
     try {
       game = await send();
     } on api.ApiException catch (e) {
-      throw _rejection(e) ?? e;
+      throw rejectionOf(e, forbidden: 'Dieser Ticker-Link ist ungültig.') ?? e;
     }
     return (await _remember(game!, before: before)).state;
   }
@@ -245,8 +245,13 @@ class ApiGameSource implements GameSource {
     final squad = _squads.containsKey(game.homeTeamId)
         ? _squads[game.homeTeamId]
         : _squads[game.homeTeamId] = await _loadSquad(game.homeTeamId);
+    if (squad != null && squad.hasLogo) {
+      _logos[squad.id] ??= await fetchLogo(_teams, squad.id);
+    }
     final state = gameStateFrom(game,
-        homeSquad: squad, before: before ?? _answers[game.id]?.state);
+        homeSquad: squad,
+        homeLogo: _logos[game.homeTeamId],
+        before: before ?? _answers[game.id]?.state);
     return _answers[game.id] = _Answer(game, state, _now());
   }
 
@@ -257,22 +262,6 @@ class ApiGameSource implements GameSource {
       return await _teams.getTeam(teamId);
     } on api.ApiException {
       return null;
-    }
-  }
-
-  /// The server said no (403, 404, 409): its text for the ticker.
-  /// Null if the request did not arrive, e.g. no network (E1.6).
-  static RejectedAction? _rejection(api.ApiException e) {
-    if (e.innerException != null) return null;
-    if (e.code == 403) {
-      return const RejectedAction('Dieser Ticker-Link ist ungültig.');
-    }
-    if (e.code != 400 && e.code != 404 && e.code != 409) return null;
-    try {
-      final body = jsonDecode(e.message ?? '') as Map<String, dynamic>;
-      return RejectedAction(body['message'] as String);
-    } catch (_) {
-      return const RejectedAction('Der Server hat die Eingabe abgelehnt.');
     }
   }
 

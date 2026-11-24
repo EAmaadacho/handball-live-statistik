@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../data/models.dart';
 import '../theme/app_theme.dart';
 import 'player_circle.dart';
+import 'team_badge.dart';
 
 /// Short names of the seven places, in the order of [GameState.field].
 const fieldPlaces = ['TH', 'LA', 'RL', 'RM', 'KL', 'RR', 'RA'];
@@ -59,6 +60,8 @@ class Court extends StatelessWidget {
               Positioned.fill(
                   child: CustomPaint(painter: CourtPainter(colors))),
               for (final side in Side.values)
+                _watermark(colors, side, scale, box.maxWidth * 0.36),
+              for (final side in Side.values)
                 for (var place = 0; place < 7; place++)
                   _placed(
                     context,
@@ -71,6 +74,28 @@ class Court extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// The team circle large and faded in the middle of the team's half,
+  /// e.g. the TV Mettmann logo at the bottom (T6). Taps go through it.
+  Widget _watermark(CourtColors colors, Side side, double scale, double size) {
+    final middle = Offset(100, side == Side.home ? 210 : 70);
+    final center = (middle - _view.topLeft) * scale;
+    return Positioned(
+      left: center.dx - size / 2,
+      top: center.dy - size / 2,
+      child: IgnorePointer(
+        child: Opacity(
+          key: Key('CourtBadge-${side.name}'),
+          opacity: 0.15,
+          child: TeamBadge(
+              team: state.game.team(side),
+              size: size,
+              color: side == Side.home ? colors.home : colors.away,
+              onColor: side == Side.home ? colors.onHome : colors.onAway),
+        ),
       ),
     );
   }

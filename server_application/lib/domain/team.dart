@@ -94,6 +94,15 @@ class Team {
     }
   }
 
+  /// Returns a new team with the logo file [logoRef], e.g. "t1.png" (T6).
+  Team withLogo(String logoRef) => Team._(
+        name: name,
+        shortCode: shortCode,
+        code: code,
+        logoRef: logoRef,
+        squad: squad,
+      );
+
   Team _withSquad(List<Player> newSquad) {
     return Team._(
       name: name,

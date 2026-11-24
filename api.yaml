@@ -12,7 +12,11 @@ tags:
   - name: teams
     description: Teams and their squads (T1, T2)
   - name: games
-    description: Games, links and match reports (S1)
+    description: Games, links, match reports and lineups (S1, E5.1)
+  - name: clock
+    description: The game clock, kept on the server (U1–U5, ADR-003)
+  - name: events
+    description: Events and substitutions during the game (E1, E2, E5)
 paths:
   /health:
     get:
@@ -205,7 +209,17 @@ paths:
       tags:
         - games
       summary: A game with both match reports, for everyone (viewer link)
+      description: >-
+        The live view asks every second with the version it knows (ADR-002).
+        If nothing changed since, the answer is 204 without content.
       operationId: getGame
+      parameters:
+        - name: version
+          in: query
+          required: false
+          description: The version the live view already shows
+          schema:
+            type: integer
       responses:
         '200':
           description: The game
@@ -213,6 +227,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Game'
+        '204':
+          description: Nothing changed since this version
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /games/{gameId}/ticker-access:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    get:
+      tags:
+        - games
+      summary: Checks the ticker link when it is opened (S1.2)
+      operationId: checkTickerAccess
+      responses:
+        '204':
+          description: The ticker code is right
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
   /games/{gameId}/match-report/home:
@@ -295,6 +327,262 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/lineups/{side}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+      - name: side
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Side'
+    put:
+      tags:
+        - games
+      summary: Sets the starting lineup of one team before kick-off (E5.1)
+      operationId: setLineup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewLineup'
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    put:
+      tags:
+        - clock
+      summary: Corrects the stopped clock, e.g. 23:14 back to 23:05 (U2)
+      operationId: adjustClock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClockTime'
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/start:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Kick-off, or lets the stopped clock run again (U1, U1.1)
+      operationId: startClock
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/stop:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Stops the clock, e.g. for an injury (U1.1)
+      operationId: stopClock
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/half-time:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Ends the first half, the clock shows 30:00 (U5.1)
+      operationId: halfTime
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/clock/end:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - clock
+      summary: Ends the game (U5.2)
+      operationId: endGame
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/events:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Records an event at the server game time, e.g. a goal of Max (E1, R1–R7)
+      operationId: recordEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEvent'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/events/{number}:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+      - name: number
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      tags:
+        - events
+      summary: Deletes an event after a typing mistake; the number is never given out again (E2)
+      operationId: deleteEvent
+      responses:
+        '200':
+          $ref: '#/components/responses/GameChanged'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/substitutions:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Swaps a player on the field for one from the bench (E5.2, E5.3)
+      operationId: substitute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Substitution'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/come-on:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Brings a player onto a free place, e.g. after a penalty (E5.4, R7)
+      operationId: comeOn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComeOn'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
+  /games/{gameId}/into-goal:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+      - $ref: '#/components/parameters/TickerCode'
+    post:
+      tags:
+        - events
+      summary: Moves a field player on the field into the empty goal (E5.7)
+      operationId: putInGoal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntoGoal'
+      responses:
+        '201':
+          $ref: '#/components/responses/GameChanged'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/RuleViolation'
 components:
   parameters:
     GameId:
@@ -338,7 +626,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Forbidden:
-      description: The team code is missing or wrong (T1.2)
+      description: The team code or ticker code is missing or wrong (T1.2, S1.2)
       content:
         application/json:
           schema:
@@ -556,17 +844,79 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Player'
+    PlayerStatistics:
+      description: >-
+        Counted from the events (L2), e.g. Max with 4 of 5 seven-metre
+        throws has sevenMeterPercentage 80. A percentage is missing without
+        any attempt.
+      type: object
+      required:
+        - playerId
+        - goals
+        - shots
+        - sevenMeterGoals
+        - sevenMeters
+        - technicalFaults
+        - yellowCards
+        - twoMinutes
+        - redCards
+        - saves
+        - goalsAgainst
+      properties:
+        playerId:
+          type: string
+        goals:
+          type: integer
+        shots:
+          type: integer
+        shootingPercentage:
+          type: integer
+        sevenMeterGoals:
+          type: integer
+        sevenMeters:
+          type: integer
+        sevenMeterPercentage:
+          type: integer
+        technicalFaults:
+          type: integer
+        yellowCards:
+          type: integer
+        twoMinutes:
+          type: integer
+        redCards:
+          type: integer
+        saves:
+          type: integer
+        goalsAgainst:
+          type: integer
+        savePercentage:
+          type: integer
     Game:
       type: object
       required:
         - id
+        - version
+        - homeTeamId
         - date
         - halfLengthMinutes
         - status
         - home
         - away
+        - clock
+        - score
+        - halfTimeScore
+        - events
+        - runningPenalties
+        - homeStatistics
+        - awayStatistics
       properties:
         id:
+          type: string
+        version:
+          description: Counts every change of the game, not the running clock (ADR-002)
+          type: integer
+        homeTeamId:
+          description: To read the squad of the home team, e.g. for a player who arrives late (S1.4)
           type: string
         date:
           type: string
@@ -579,6 +929,34 @@ components:
           $ref: '#/components/schemas/GameTeam'
         away:
           $ref: '#/components/schemas/GameTeam'
+        clock:
+          $ref: '#/components/schemas/Clock'
+        homeLineup:
+          $ref: '#/components/schemas/Lineup'
+        awayLineup:
+          $ref: '#/components/schemas/Lineup'
+        score:
+          $ref: '#/components/schemas/Score'
+        halfTimeScore:
+          $ref: '#/components/schemas/Score'
+        events:
+          description: Without substitutions, they are not shown (E5.3)
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        runningPenalties:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunningPenalty'
+        homeStatistics:
+          description: One row per player in the match report (L2)
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerStatistics'
+        awayStatistics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerStatistics'
     GameWithCode:
       description: A game with the secret ticker code, only for the team manager (S1.2, S1.3)
       type: object
@@ -596,5 +974,181 @@ components:
       required:
         - playerId
       properties:
+        playerId:
+          type: string
+    ClockPhase:
+      type: string
+      enum:
+        - notStarted
+        - firstHalf
+        - halfTime
+        - secondHalf
+        - finished
+    Clock:
+      description: The clock at the moment of the answer; while it runs, the client counts on by itself (ADR-003)
+      type: object
+      required:
+        - phase
+        - running
+        - gameTimeSeconds
+      properties:
+        phase:
+          $ref: '#/components/schemas/ClockPhase'
+        running:
+          type: boolean
+        gameTimeSeconds:
+          type: integer
+          description: e.g. 1394 for 23:14
+    ClockTime:
+      type: object
+      required:
+        - gameTimeSeconds
+      properties:
+        gameTimeSeconds:
+          type: integer
+    Lineup:
+      description: Who stands on the field right now; no goalkeeperId means an empty goal (E1.5)
+      type: object
+      required:
+        - fieldPlayerIds
+      properties:
+        goalkeeperId:
+          type: string
+          nullable: true
+        fieldPlayerIds:
+          type: array
+          items:
+            type: string
+    NewLineup:
+      description: The starting lineup, any player may start in goal (E5.1, E5.7)
+      type: object
+      required:
+        - goalkeeperId
+        - fieldPlayerIds
+      properties:
+        goalkeeperId:
+          type: string
+        fieldPlayerIds:
+          type: array
+          items:
+            type: string
+    EventType:
+      type: string
+      enum:
+        - goal
+        - miss
+        - save
+        - sevenMeterGoal
+        - sevenMeterMiss
+        - twoMinutes
+        - yellowCard
+        - redCard
+        - technicalFault
+        - timeout
+    NewEvent:
+      description: 'e.g. {type: goal, side: home, playerId: <Max>}; a save is recorded on the shooter (E1.3), a timeout has no player'
+      type: object
+      required:
+        - type
+        - side
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        leavingPlayerId:
+          type: string
+          description: For a penalty of a player on the bench, the field player who goes off (E5.4)
+    Event:
+      type: object
+      required:
+        - number
+        - type
+        - side
+        - gameTimeSeconds
+        - half
+      properties:
+        number:
+          type: integer
+        type:
+          $ref: '#/components/schemas/EventType'
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+          nullable: true
+        leavingPlayerId:
+          type: string
+          nullable: true
+        goalkeeperId:
+          type: string
+          nullable: true
+          description: The goalkeeper in the opposing goal for goals and saves (E1.2)
+        gameTimeSeconds:
+          type: integer
+        half:
+          type: integer
+    Score:
+      type: object
+      required:
+        - home
+        - away
+      properties:
+        home:
+          type: integer
+        away:
+          type: integer
+    RunningPenalty:
+      description: e.g. Max, 23 seconds left (L3)
+      type: object
+      required:
+        - side
+        - playerId
+        - remainingSeconds
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        remainingSeconds:
+          type: integer
+    Substitution:
+      type: object
+      required:
+        - side
+        - outId
+        - inId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        outId:
+          type: string
+        inId:
+          type: string
+        intoGoal:
+          type: boolean
+          description: Whether the incoming player goes into the free goal; without it a goalkeeper of the squad does (E5.6, E5.7)
+    ComeOn:
+      type: object
+      required:
+        - side
+        - playerId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
+        playerId:
+          type: string
+        intoGoal:
+          type: boolean
+    IntoGoal:
+      type: object
+      required:
+        - side
+        - playerId
+      properties:
+        side:
+          $ref: '#/components/schemas/Side'
         playerId:
           type: string

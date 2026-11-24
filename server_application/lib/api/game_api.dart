@@ -7,9 +7,9 @@ import '../domain/game_event.dart';
 import '../domain/game_team.dart';
 import '../domain/rule_violation.dart';
 import '../domain/team.dart';
-import '../storage/game_repository.dart';
 import '../storage/stored_game.dart';
 import '../storage/team_repository.dart';
+import 'game_access.dart';
 import 'game_mapping.dart';
 import 'random_code.dart';
 import 'responses.dart';
@@ -21,12 +21,11 @@ import 'team_mapping.dart';
 ///
 /// The team manager creates a game with the team code and gets the ticker
 /// code once (S1.2). The ticker changes the match report with the ticker
-/// code in the header X-Ticker-Code. The game id is the viewer link.
+/// code in the header X-Ticker-Code, see [GameAccess]. The game id is the
+/// viewer link.
 class GameApi {
-  static const tickerCodeHeader = 'x-ticker-code';
-
   final TeamRepository _teams;
-  final GameRepository _games;
+  final GameAccess _games;
   final String Function() _newCode;
   final String Function() _newId;
 
@@ -72,8 +71,9 @@ class GameApi {
           tickerCode: _newCode(),
           game: game,
         );
-        _games.save(stored);
-        return jsonResponse(toApiGameWithCode(stored).toJson(), status: 201);
+        _games.games.save(stored);
+        return jsonResponse(toApiGameWithCode(stored, _games.now()).toJson(),
+            status: 201);
       });
 
   /// GET /teams/{teamId}/games: all games with status and links (S1.3).
@@ -81,19 +81,28 @@ class GameApi {
       withErrorAnswers(() async {
         _teamWithCode(request, teamId);
         return jsonResponse([
-          for (final stored in _games.ofTeam(teamId))
-            toApiGameWithCode(stored).toJson(),
+          for (final stored in _games.games.ofTeam(teamId))
+            toApiGameWithCode(stored, _games.now()).toJson(),
         ]);
       });
 
   /// GET /games/{gameId}: the game for everyone with the viewer link.
-  Future<Response> _getGame(Request request, String gameId) => withErrorAnswers(
-      () async => jsonResponse(toApiGame(_find(gameId)).toJson()));
+  ///
+  /// The live view asks every second with ?version=5 (ADR-002). If the
+  /// game is still at version 5, the short answer 204 says "nothing new".
+  Future<Response> _getGame(Request request, String gameId) =>
+      withErrorAnswers(() async {
+        final stored = _games.find(gameId);
+        final knownVersion =
+            int.tryParse(request.url.queryParameters['version'] ?? '');
+        if (knownVersion == stored.version) return Response(204);
+        return _games.answer(stored);
+      });
 
   /// POST /games/{gameId}/match-report/home: e.g. Tom arrives late and is
   /// taken from the squad of TV Mettmann into the match report (S1.4).
   Future<Response> _addHomePlayer(Request request, String gameId) =>
-      _changeGame(request, gameId, (stored) async {
+      _games.change(request, gameId, (stored) async {
         final ref = await readBody(request, api.SquadPlayerRef.fromJson);
         final team = _teams.byId(stored.homeTeamId)!;
         final player = team.playerById(ref.playerId) ??
@@ -104,7 +113,7 @@ class GameApi {
   /// POST /games/{gameId}/match-report/away: e.g. "12 Paul Becker" for
   /// HSG Hilden, which is not registered (S1.1, S1.4).
   Future<Response> _addAwayPlayer(Request request, String gameId) =>
-      _changeGame(request, gameId, (stored) async {
+      _games.change(request, gameId, (stored) async {
         final data = await readBody(request, api.PlayerData.fromJson);
         return stored.game
             .addToMatchReport(Side.away, toDomainPlayer(_newId(), data));
@@ -114,26 +123,8 @@ class GameApi {
   /// kick-off (S1.4).
   Future<Response> _removePlayer(
           Request request, String gameId, String side, String playerId) =>
-      _changeGame(request, gameId, (stored) async {
-        final which = Side.values.asNameMap()[side] ??
-            (throw const HttpError(404, 'Diese Seite gibt es nicht.'));
-        return stored.game.removeFromMatchReport(which, playerId);
-      });
-
-  /// The steps every ticker change shares: find the game (404), check the
-  /// ticker code (403), let [change] return the new game, save, answer.
-  Future<Response> _changeGame(
-    Request request,
-    String gameId,
-    Future<Game> Function(StoredGame stored) change, {
-    int status = 200,
-  }) =>
-      withErrorAnswers(() async {
-        final stored = _find(gameId);
-        requireCode(request, tickerCodeHeader, stored.tickerCode);
-        final changed = stored.withGame(await change(stored));
-        _games.save(changed);
-        return jsonResponse(toApiGame(changed).toJson(), status: status);
+      _games.change(request, gameId, (stored) async {
+        return stored.game.removeFromMatchReport(sideOf(side), playerId);
       });
 
   /// The team [teamId] if the request carries its code (404, 403).
@@ -143,8 +134,4 @@ class GameApi {
     requireCode(request, TeamApi.codeHeader, team.code);
     return team;
   }
-
-  StoredGame _find(String gameId) =>
-      _games.byId(gameId) ??
-      (throw const HttpError(404, 'Spiel nicht gefunden.'));
 }

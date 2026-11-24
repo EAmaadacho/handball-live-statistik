@@ -1,24 +1,105 @@
 import 'package:openapi/api.dart' as api;
 
 import '../domain/game_clock.dart';
+import '../domain/game_event.dart';
 import '../domain/game_team.dart';
+import '../domain/lineup.dart';
+import '../domain/rules.dart' as rules;
+import '../domain/score.dart';
+import '../domain/statistics.dart';
 import '../storage/stored_game.dart';
 import 'team_mapping.dart';
 
 /// The game as everyone may read it with the viewer link: without the
-/// ticker code (S1.2).
-api.Game toApiGame(StoredGame stored) => api.Game(
-      id: stored.id,
-      date: stored.date,
-      halfLengthMinutes: stored.game.clock.halfLength.inMinutes,
-      status: _statusOf(stored.game.clock.phase),
-      home: _toApiGameTeam(stored.game.home),
-      away: _toApiGameTeam(stored.game.away),
+/// ticker code (S1.2). The clock shows the game time at [now] (ADR-003).
+api.Game toApiGame(StoredGame stored, DateTime now) {
+  final game = stored.game;
+  return api.Game(
+    id: stored.id,
+    version: stored.version,
+    homeTeamId: stored.homeTeamId,
+    date: stored.date,
+    halfLengthMinutes: game.clock.halfLength.inMinutes,
+    status: _statusOf(game.clock.phase),
+    home: _toApiGameTeam(game.home),
+    away: _toApiGameTeam(game.away),
+    clock: _toApiClock(game.clock, now),
+    homeLineup: _toApiLineup(game.lineupOf(Side.home)),
+    awayLineup: _toApiLineup(game.lineupOf(Side.away)),
+    score: _toApiScore(game.score),
+    halfTimeScore: _toApiScore(game.halfTimeScore),
+    events: [
+      for (final event in game.events)
+        if (!rules.isLineupChange(event.type)) _toApiEvent(event),
+    ],
+    runningPenalties: [
+      for (final penalty in game.runningPenalties(now))
+        api.RunningPenalty(
+          side: api.Side.fromJson(penalty.side.name)!,
+          playerId: penalty.playerId,
+          remainingSeconds: penalty.remaining.inSeconds,
+        ),
+    ],
+    homeStatistics: _toApiStatistics(game.statisticsOf(Side.home)),
+    awayStatistics: _toApiStatistics(game.statisticsOf(Side.away)),
+  );
+}
+
+/// e.g. Max: 8 goals from 10 shots, shooting percentage 80 (L2).
+List<api.PlayerStatistics> _toApiStatistics(List<PlayerStatistics> rows) => [
+      for (final row in rows)
+        api.PlayerStatistics(
+          playerId: row.playerId,
+          goals: row.goals,
+          shots: row.shots,
+          shootingPercentage: row.shootingPercentage,
+          sevenMeterGoals: row.sevenMeterGoals,
+          sevenMeters: row.sevenMeters,
+          sevenMeterPercentage: row.sevenMeterPercentage,
+          technicalFaults: row.technicalFaults,
+          yellowCards: row.yellowCards,
+          twoMinutes: row.twoMinutes,
+          redCards: row.redCards,
+          saves: row.saves,
+          goalsAgainst: row.goalsAgainst,
+          savePercentage: row.savePercentage,
+        ),
+    ];
+
+api.Score _toApiScore(Score score) =>
+    api.Score(home: score.home, away: score.away);
+
+/// e.g. event 14, goal by Max at 23:14 (1394 seconds) in the first half.
+api.Event _toApiEvent(GameEvent event) => api.Event(
+      number: event.number,
+      type: api.EventType.fromJson(event.type.name)!,
+      side: api.Side.fromJson(event.side.name)!,
+      playerId: event.playerId,
+      leavingPlayerId: event.leavingPlayerId,
+      goalkeeperId: event.goalkeeperId,
+      gameTimeSeconds: event.gameTime.inSeconds,
+      half: event.half,
     );
 
 /// The game with its ticker code, only for the team manager (S1.3).
-api.GameWithCode toApiGameWithCode(StoredGame stored) =>
-    api.GameWithCode(game: toApiGame(stored), tickerCode: stored.tickerCode);
+api.GameWithCode toApiGameWithCode(StoredGame stored, DateTime now) =>
+    api.GameWithCode(
+        game: toApiGame(stored, now), tickerCode: stored.tickerCode);
+
+/// e.g. first half, running, 1394 seconds = 23:14.
+api.Clock _toApiClock(GameClock clock, DateTime now) => api.Clock(
+      phase: api.ClockPhase.fromJson(clock.phase.name)!,
+      running: clock.isRunningAt(now),
+      gameTimeSeconds: clock.gameTime(now).inSeconds,
+    );
+
+/// The lineup right now, `null` before it is set.
+api.Lineup? _toApiLineup(Lineup? lineup) => lineup == null
+    ? null
+    : api.Lineup(
+        goalkeeperId: lineup.goalkeeperId,
+        fieldPlayerIds: lineup.fieldPlayerIds,
+      );
 
 api.GameTeam _toApiGameTeam(GameTeam team) => api.GameTeam(
       name: toApiName(team.name),

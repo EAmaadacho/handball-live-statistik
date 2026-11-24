@@ -13,6 +13,7 @@ import '../widgets/court_with_benches.dart';
 import '../widgets/format.dart';
 import '../widgets/goalkeeper_choice.dart';
 import '../widgets/lineup_board.dart';
+import '../widgets/phase_button.dart';
 import '../widgets/player_choice.dart';
 import '../widgets/scoreboard.dart';
 import '../widgets/section_heading.dart';
@@ -42,7 +43,7 @@ class _Swap {
 class TickerPage extends StatefulWidget {
   const TickerPage({super.key, required this.gameId, required this.tickerCode});
 
-  final int gameId;
+  final String gameId;
   final String tickerCode;
 
   @override
@@ -128,8 +129,18 @@ class _TickerPageState extends State<TickerPage> {
   ///
   /// After 2 minutes or red for the goalkeeper on the field, asks who goes
   /// in goal (E5.6). Yellow shows the hint of R6 when it applies.
-  Future<void> _record(EventKind kind, Side side, String? playerId) async {
+  Future<void> _record(EventKind kind, Side side, String? playerId,
+      {String? leavingPlayerId}) async {
     final state = _state!;
+    final sentOff = kind == EventKind.twoMinutes || kind == EventKind.redCard;
+    if (sentOff &&
+        leavingPlayerId == null &&
+        !state.onField(side).contains(playerId)) {
+      // Paul on the bench gets 2 minutes: a field player goes off (E5.4).
+      leavingPlayerId = await chooseWhoLeaves(context, state, side,
+          title: 'Wer verlässt dafür das Feld?', cancel: 'Abbrechen');
+      if (leavingPlayerId == null) return;
+    }
     final team = state.game.team(side);
     final player = playerId == null ? null : team.player(playerId);
     final what = player == null
@@ -146,8 +157,9 @@ class _TickerPageState extends State<TickerPage> {
       what,
       () async => event = await _source.record(
           widget.gameId, widget.tickerCode, kind, side,
-          playerId: playerId),
-      retry: () => _record(kind, side, playerId),
+          playerId: playerId, leavingPlayerId: leavingPlayerId),
+      retry: () =>
+          _record(kind, side, playerId, leavingPlayerId: leavingPlayerId),
     );
     if (!ok) return;
     _message(
@@ -220,6 +232,14 @@ class _TickerPageState extends State<TickerPage> {
   Future<void> _toggleClock() =>
       _send('Uhr', () => _source.toggleClock(widget.gameId, widget.tickerCode),
           retry: _toggleClock);
+
+  Future<void> _halfTime() => _send(
+      'Halbzeit', () => _source.halfTime(widget.gameId, widget.tickerCode),
+      retry: _halfTime);
+
+  Future<void> _endGame() =>
+      _send('Abpfiff', () => _source.endGame(widget.gameId, widget.tickerCode),
+          retry: _endGame);
 
   /// E5.6: a goalkeeper from the bench comes in for a field player, or a
   /// field player moves into goal, or the goal stays empty.
@@ -449,6 +469,7 @@ class _TickerPageState extends State<TickerPage> {
           onTimeout: (side) => _record(EventKind.timeout, side, null),
           onHistory: withHistory ? _openHistory : null,
         ),
+        PhaseButton(state: state, onHalfTime: _halfTime, onEnd: _endGame),
         if (_swap case final swap?)
           SwapBanner(
               text: _swapText(state, swap),

@@ -44,25 +44,22 @@ GoRouter createRouter(GameSource source, {String initialLocation = '/'}) {
       GoRoute(
         path: '/spiel/:gameId/ticker/:tickerCode',
         redirect: (context, state) async {
-          final gameId = int.tryParse(state.pathParameters['gameId']!);
-          final ok = gameId != null &&
-              await source.isTickerCode(
-                  gameId, state.pathParameters['tickerCode']!);
+          final ok = await source.isTickerCode(state.pathParameters['gameId']!,
+              state.pathParameters['tickerCode']!);
           return ok ? null : linkInvalidPath;
         },
         builder: (context, state) => TickerPage(
-            gameId: int.parse(state.pathParameters['gameId']!),
+            gameId: state.pathParameters['gameId']!,
             tickerCode: state.pathParameters['tickerCode']!),
       ),
       GoRoute(
         path: '/spiel/:gameId/live',
         redirect: (context, state) async {
-          final gameId = int.tryParse(state.pathParameters['gameId']!);
-          final game = gameId == null ? null : await source.loadGame(gameId);
+          final game = await source.loadGame(state.pathParameters['gameId']!);
           return game == null ? linkInvalidPath : null;
         },
         builder: (context, state) =>
-            LivePage(gameId: int.parse(state.pathParameters['gameId']!)),
+            LivePage(gameId: state.pathParameters['gameId']!),
       ),
     ],
   );

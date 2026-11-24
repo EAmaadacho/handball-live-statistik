@@ -46,6 +46,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Fake server for the tests of ApiGameSource (package:http/testing.dart).
+  http: '>=0.13.0 <2.0.0'
   mockito: ^5.8.1
   build_runner: ^2.16.2
 

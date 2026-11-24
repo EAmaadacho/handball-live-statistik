@@ -27,17 +27,23 @@ Future<String?> chooseGoalkeeper(
       emptyChoice: 'Tor bleibt leer');
 }
 
-/// Which field player leaves for the goalkeeper from the bench (E5.6)?
+/// Which field player leaves the field?
+///
+/// For the goalkeeper from the bench (E5.6), or when a player on the bench
+/// gets 2 minutes and the team plays one short (E5.4, [title]
+/// "Wer verlässt dafür das Feld?").
 Future<String?> chooseWhoLeaves(
-    BuildContext context, GameState state, Side side) {
+    BuildContext context, GameState state, Side side,
+    {String title = 'Wer geht dafür vom Feld?',
+    String cancel = 'Abbrechen, Tor bleibt leer'}) {
   final team = state.game.team(side);
   return _choosePlayer(
       context,
-      'Wer geht dafür vom Feld?',
+      title,
       [
         for (final id in state.onField(side)) (team.player(id), 'Feldspieler'),
       ],
-      emptyChoice: 'Abbrechen, Tor bleibt leer');
+      emptyChoice: cancel);
 }
 
 Future<String?> _choosePlayer(

@@ -2,4 +2,4 @@ openapi
 tools/
 secrets.json
 server_application/data/
-data/
+/data/

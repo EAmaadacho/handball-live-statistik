@@ -72,7 +72,8 @@ class Game {
     this.halfMinutes = 30,
   });
 
-  final int id;
+  /// Opaque id from the server, also part of the viewer link, e.g. "ydVsnTnc".
+  final String id;
   final Team home;
   final Team away;
   final int halfMinutes;
@@ -91,6 +92,12 @@ class Game {
 enum Side { home, away }
 
 enum CardMark { yellow, red }
+
+/// Where the game stands, as the server's clock says (U1, U5).
+///
+/// The clock stops by itself at 30:00; the ticker then presses "Halbzeit".
+/// The next start begins the second half, "Abpfiff" ends the game.
+enum GamePhase { notStarted, firstHalf, halfTime, secondHalf, finished }
 
 /// A running penalty, shown on the scoreboard and at the bench.
 ///
@@ -249,7 +256,7 @@ class GameState {
     this.stats = const {},
     this.events = const [],
     this.halftimeScore,
-    this.ended = false,
+    required this.phase,
     this.goalkeepers,
     this.matchReport,
   });
@@ -260,7 +267,9 @@ class GameState {
   /// Seconds played, e.g. 2327 for 38:47.
   final int clockSeconds;
   final bool clockRunning;
-  final bool ended;
+  final GamePhase phase;
+
+  bool get ended => phase == GamePhase.finished;
 
   /// Who is in goal for each team, as the server says (Lineup.goalkeeperId).
   /// Any player may be goalkeeper in a game (IHF rule 4:7), e.g. Max with a
@@ -304,10 +313,16 @@ class GameState {
   /// Score at half time, e.g. "8:7"; null before half time (U5).
   final String? halftimeScore;
 
-  int get half => clockSeconds < game.halfMinutes * 60 ? 1 : 2;
+  /// 1 until the second half starts, then 2.
+  int get half =>
+      phase == GamePhase.secondHalf || phase == GamePhase.finished ? 2 : 1;
 
-  /// Before kick-off the clock stands at 0:00 (R4.1).
-  bool get started => clockRunning || clockSeconds > 0;
+  /// Before kick-off the ticker sets up the lineups (R4.1, E5.1).
+  bool get started => phase != GamePhase.notStarted;
+
+  /// Where the clock stops by itself: 30:00 in the first, 60:00 in the
+  /// second half (for 30 minutes per half).
+  int get halfEndSeconds => game.halfMinutes * 60 * half;
 
   /// The goalkeeper in goal right now, or null for an empty goal (E1.2, E1.5).
   ///
@@ -337,6 +352,8 @@ class GameState {
     Map<Side, String?>? goalkeepers,
     Map<Side, List<String>>? matchReport,
     List<GameEvent>? events,
+    String? halftimeScore,
+    GamePhase? phase,
   }) =>
       GameState(
         game: game ?? this.game,
@@ -352,19 +369,38 @@ class GameState {
         goalkeepers: goalkeepers ?? this.goalkeepers,
         matchReport: matchReport ?? this.matchReport,
         events: events ?? this.events,
-        halftimeScore: halftimeScore,
-        ended: ended,
+        halftimeScore: halftimeScore ?? this.halftimeScore,
+        phase: phase ?? this.phase,
       );
 
   /// The same state [seconds] later: clock and penalties have moved on.
+  ///
+  /// The app counts on by itself between two answers of the server
+  /// (ADR-003). Example: 23:14 running, 3 seconds later → 23:17.
+  /// At the end of a half the clock stops by itself, e.g. at 30:00.
+  /// A player whose 2 minutes are over goes back to the bench (E5.4).
   GameState advancedBy(int seconds) {
     if (!clockRunning || seconds <= 0) return this;
+    final played = seconds.clamp(0, halfEndSeconds - clockSeconds);
+    final over = [
+      for (final p in penalties)
+        if (p.secondsLeft <= played && p.playerId != null) p
+    ];
     return copyWith(
-      clockSeconds: clockSeconds + seconds,
+      clockSeconds: clockSeconds + played,
+      clockRunning: clockSeconds + played < halfEndSeconds,
       penalties: [
         for (final p in penalties)
-          if (p.secondsLeft > seconds) p.after(seconds),
+          if (p.secondsLeft > played) p.after(played),
       ],
+      bench: {
+        for (final side in Side.values)
+          side: [
+            ...bench[side]!,
+            for (final p in over)
+              if (p.side == side) p.playerId!
+          ]
+      },
     );
   }
 }

@@ -110,6 +110,27 @@ Map<String, dynamic> _game() => {
       'runningPenalties': [
         {'side': 'away', 'playerId': 'a8', 'remainingSeconds': 82},
       ],
+      'homeStatistics': [_stat('max7', goals: 1, shots: 1)],
+      'awayStatistics': [
+        _stat('a1', against: 1),
+        _stat('a8', twoMinutes: 1),
+      ],
+    };
+
+Map<String, dynamic> _stat(String id,
+        {int goals = 0, int shots = 0, int twoMinutes = 0, int against = 0}) =>
+    {
+      'playerId': id,
+      'goals': goals,
+      'shots': shots,
+      'sevenMeterGoals': 0,
+      'sevenMeters': 0,
+      'technicalFaults': 0,
+      'yellowCards': 0,
+      'twoMinutes': twoMinutes,
+      'redCards': 0,
+      'saves': 0,
+      'goalsAgainst': against,
     };
 
 /// Plays the server: answers like api.yaml says and notes every request.

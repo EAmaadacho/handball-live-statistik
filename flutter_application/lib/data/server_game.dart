@@ -2,14 +2,13 @@
 /// the pages show. The pages do not notice whether the demo or the server
 /// answers.
 ///
-/// The server sends the events; score after each event, statistics, cards
-/// and timeouts are counted here from them (ADR-006).
+/// The server sends the events and the statistics (ADR-006); the score
+/// after each event, cards and timeouts are read here from the events.
 library;
 
 import 'package:openapi/api.dart' as api;
 
 import 'models.dart';
-import 'statistics.dart';
 
 /// The game [game] as the pages show it.
 ///
@@ -74,7 +73,7 @@ GameState gameStateFrom(api.Game game,
     bench: {for (final side in Side.values) side: benchOf(side)},
     penalties: penalties,
     cards: cards,
-    stats: _stats(game, events),
+    stats: _stats(game),
     events: events,
     halftimeScore: halfTimeOver
         ? '${game.halfTimeScore.home}:${game.halfTimeScore.away}'
@@ -202,13 +201,21 @@ Map<String, CardMark> _cards(List<GameEvent> events) {
   return cards;
 }
 
-/// Statistics per player; goals and saves also count for the goalkeeper the
-/// server stored with the event (E1.2).
-Map<String, PlayerStats> _stats(api.Game game, List<GameEvent> events) {
-  final keeperOf = {for (final e in game.events) e.number: e.goalkeeperId};
-  var stats = <String, PlayerStats>{};
-  for (final e in events) {
-    stats = statsWithEvent(stats, e, goalkeeperId: keeperOf[e.number]);
-  }
-  return stats;
-}
+/// Statistics per player as the server counted them from the events,
+/// e.g. Max: 5 goals from 7 shots (ADR-006). Rates are worked out by the
+/// pages, "–" without a shot.
+Map<String, PlayerStats> _stats(api.Game game) => {
+      for (final s in [...game.homeStatistics, ...game.awayStatistics])
+        s.playerId: PlayerStats(
+          goals: s.goals,
+          shots: s.shots,
+          sevenMeterGoals: s.sevenMeterGoals,
+          sevenMeterShots: s.sevenMeters,
+          saves: s.saves,
+          goalsAgainst: s.goalsAgainst,
+          technicalFaults: s.technicalFaults,
+          yellowCards: s.yellowCards,
+          twoMinutes: s.twoMinutes,
+          redCards: s.redCards,
+        ),
+    };

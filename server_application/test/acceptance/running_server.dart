@@ -45,27 +45,45 @@ class RunningServer {
     dataDir.deleteSync(recursive: true);
   }
 
-  Future<Answer> get(String path) => _send('GET', path);
+  // [code] is the secret team code, [tickerCode] the code of the ticker
+  // link; each one goes into its own header.
 
-  Future<Answer> post(String path, {Object? body, String? code}) =>
-      _send('POST', path, body: body, code: code);
+  Future<Answer> get(String path, {String? code}) =>
+      _send('GET', path, code: code);
+
+  /// GET for answers that are a list, e.g. GET /teams/{id}/games.
+  Future<(int, List<dynamic>)> getList(String path, {String? code}) async {
+    final response = await _request('GET', path, code: code);
+    return (response.statusCode, jsonDecode(response.body) as List<dynamic>);
+  }
+
+  Future<Answer> post(String path,
+          {Object? body, String? code, String? tickerCode}) =>
+      _send('POST', path, body: body, code: code, tickerCode: tickerCode);
 
   Future<Answer> put(String path, {Object? body, String? code}) =>
       _send('PUT', path, body: body, code: code);
 
-  Future<Answer> delete(String path, {String? code}) =>
-      _send('DELETE', path, code: code);
+  Future<Answer> delete(String path, {String? code, String? tickerCode}) =>
+      _send('DELETE', path, code: code, tickerCode: tickerCode);
 
   Future<Answer> _send(String method, String path,
-      {Object? body, String? code}) async {
-    final request = http.Request(method, Uri.parse('$_host$path'));
-    if (body != null) request.body = jsonEncode(body);
-    if (code != null) request.headers['X-Team-Code'] = code;
-    final response = await http.Response.fromStream(await request.send());
+      {Object? body, String? code, String? tickerCode}) async {
+    final response = await _request(method, path,
+        body: body, code: code, tickerCode: tickerCode);
     return (
       response.statusCode,
       jsonDecode(response.body) as Map<String, dynamic>
     );
+  }
+
+  Future<http.Response> _request(String method, String path,
+      {Object? body, String? code, String? tickerCode}) async {
+    final request = http.Request(method, Uri.parse('$_host$path'));
+    if (body != null) request.body = jsonEncode(body);
+    if (code != null) request.headers['X-Team-Code'] = code;
+    if (tickerCode != null) request.headers['X-Ticker-Code'] = tickerCode;
+    return http.Response.fromStream(await request.send());
   }
 }
 
@@ -101,4 +119,22 @@ Map<String, Object> aPlayer({
       'firstName': firstName,
       'lastName': lastName,
       'position': position,
+    };
+
+/// Body of POST /teams/{id}/games; by default against HSG Hilden Männer on
+/// 28.11.2026 at 18:00 with halves of 30 minutes.
+Map<String, Object> newGame({
+  String club = 'HSG Hilden',
+  String date = '2026-11-28T17:00:00Z',
+  List<Map<String, Object>> players = const [],
+  int? halfLengthMinutes,
+}) =>
+    {
+      'opponent': {
+        'name': {'club': club, 'ageGroup': 'men', 'teamNumber': 1},
+        'shortCode': 'HSG',
+        'players': players,
+      },
+      'date': date,
+      if (halfLengthMinutes != null) 'halfLengthMinutes': halfLengthMinutes,
     };

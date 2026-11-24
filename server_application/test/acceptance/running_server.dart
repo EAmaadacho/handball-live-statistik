@@ -51,6 +51,11 @@ class RunningServer {
   Future<Answer> get(String path, {String? code}) =>
       _send('GET', path, code: code);
 
+  /// Only the HTTP status, e.g. 204 for GET /games/{id}?version=5 when
+  /// nothing changed (the answer then has no body).
+  Future<int> status(String path, {String? tickerCode}) async =>
+      (await _request('GET', path, tickerCode: tickerCode)).statusCode;
+
   /// GET for answers that are a list, e.g. GET /teams/{id}/games.
   Future<(int, List<dynamic>)> getList(String path, {String? code}) async {
     final response = await _request('GET', path, code: code);

@@ -138,6 +138,9 @@ class _FakeServer {
   Map<String, dynamic> game = _game();
   final requests = <http.Request>[];
 
+  /// The club logo of TV Mettmann, null = none uploaded (T6).
+  List<int>? logo;
+
   /// The answer for the next change, e.g. 409 with a rule's text.
   http.Response? nextAnswer;
 
@@ -148,9 +151,16 @@ class _FakeServer {
   Future<http.Response> handle(http.Request request) async {
     requests.add(request);
     final path = request.url.path;
+    if (path == '/teams/tvm12345/logo') {
+      return logo == null
+          ? _json({'message': 'Kein Logo vorhanden.'}, 404)
+          : http.Response.bytes(logo!, 200,
+              headers: {'content-type': 'image/png'});
+    }
     if (path == '/teams/tvm12345') {
       return _json({
         'id': 'tvm12345',
+        'hasLogo': logo != null,
         'name': game['home']['name'],
         'displayName': 'TV Mettmann',
         'shortCode': 'TVM',
@@ -326,5 +336,22 @@ void main() {
     final s = (await source.loadState(_id))!;
     expect(s.game.home.player('leon18').number, 18);
     expect(s.reportOf(Side.home), isNot(contains('leon18')));
+  });
+
+  test('T6 the logo of TV Mettmann is loaded once and shown', () async {
+    server.logo = [0x89, 0x50, 0x4E, 0x47, 1, 2, 3];
+    final s = (await source.loadState(_id))!;
+    expect(s.game.home.logo, server.logo);
+    expect(s.game.away.logo, isNull);
+    server.game = _game()..['version'] = 8;
+    await source.loadState(_id);
+    expect(
+        server.requests.where((r) => r.url.path.endsWith('/logo')).length, 1);
+  });
+
+  test('T6_2 without a logo the short name stays in the circle', () async {
+    final s = (await source.loadState(_id))!;
+    expect(s.game.home.logo, isNull);
+    expect(server.requests.any((r) => r.url.path.endsWith('/logo')), isFalse);
   });
 }

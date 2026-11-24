@@ -1,15 +1,20 @@
+import 'dart:typed_data';
+
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../data/game_source.dart';
+import '../data/logo_check.dart';
 import '../data/models.dart';
 import '../data/team_source.dart';
 import '../widgets/form_scaffold.dart';
 import '../widgets/format.dart';
 import '../widgets/link_box.dart';
+import '../widgets/logo_picker.dart';
 import '../widgets/section_heading.dart';
 import '../widgets/squad_player_dialog.dart';
+import '../widgets/team_badge.dart';
 
 /// Team management (T2, S1.3), opened with the secret team link
 /// /team/{teamId}/{code}.
@@ -17,10 +22,17 @@ import '../widgets/squad_player_dialog.dart';
 /// Example for TV Mettmann: the squad "1 Nora Neumann · Torwart, 7 Max
 /// Mustermann · Feldspieler …" and the games with status and links.
 class TeamPage extends StatefulWidget {
-  const TeamPage({super.key, required this.teamId, required this.code});
+  const TeamPage(
+      {super.key,
+      required this.teamId,
+      required this.code,
+      this.pickLogo = pickLogoFile});
 
   final String teamId;
   final String code;
+
+  /// Opens the file dialog for the logo; tests pass a fixed picture.
+  final Future<Uint8List?> Function() pickLogo;
 
   @override
   State<TeamPage> createState() => _TeamPageState();
@@ -74,6 +86,22 @@ class _TeamPageState extends State<TeamPage> {
     }
   }
 
+  /// T6: the app checks PNG/JPG and 500 KB first, the server again.
+  Future<void> _uploadLogo() async {
+    final bytes = await widget.pickLogo();
+    if (bytes == null || !mounted) return;
+    if (logoProblem(bytes) case final problem?) return _message(problem);
+    try {
+      final team = await _source.uploadLogo(widget.teamId, widget.code, bytes);
+      setState(() => _team = team);
+      _message('Logo gespeichert.');
+    } on RejectedAction catch (e) {
+      _message(e.message);
+    } catch (_) {
+      _message('Nicht gespeichert: keine Verbindung zum Server.');
+    }
+  }
+
   void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(key: const Key('TeamMessage'), content: Text(text)));
 
@@ -93,7 +121,7 @@ class _TeamPageState extends State<TeamPage> {
     return FormScaffold(
       title: 'Teamverwaltung',
       children: [
-        _Header(team: team),
+        _Header(team: team, onLogoTap: _uploadLogo),
         if (_error != null) FormError(_error),
         SectionHeading('Kader · ${players.length} Spieler'),
         for (final p in players)
@@ -134,11 +162,13 @@ class _TeamPageState extends State<TeamPage> {
   }
 }
 
-/// Name of the team with its short name in a circle; the logo follows (T6).
+/// Logo (or short name) and name of the team; tapping the circle or
+/// "Logo hochladen" chooses a new logo (T6).
 class _Header extends StatelessWidget {
-  const _Header({required this.team});
+  const _Header({required this.team, required this.onLogoTap});
 
   final Team team;
+  final VoidCallback onLogoTap;
 
   @override
   Widget build(BuildContext context) {
@@ -147,20 +177,30 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: theme.colorScheme.primary,
-            child: Text(team.shortName,
-                style: TextStyle(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w700)),
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onLogoTap,
+            child: TeamBadge(team: team, size: 64),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(team.name,
-                key: const Key('TeamName'),
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(team.name,
+                    key: const Key('TeamName'),
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                TextButton(
+                  key: const Key('UploadLogo'),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  onPressed: onLogoTap,
+                  child: Text(team.logo == null
+                      ? 'Logo hochladen (PNG oder JPG, bis 500 KB)'
+                      : 'Logo ändern'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

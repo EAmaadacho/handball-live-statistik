@@ -5,8 +5,11 @@ import 'package:openapi/api.dart';
 import 'package:provider/provider.dart';
 
 import 'data/api_game_source.dart';
+import 'data/api_team_source.dart';
 import 'data/demo_game_source.dart';
+import 'data/demo_team_source.dart';
 import 'data/game_source.dart';
+import 'data/team_source.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
@@ -25,13 +28,26 @@ void main() {
     MultiProvider(
       providers: [
         Provider<HealthApi>.value(value: HealthApi(client)),
-        Provider<GameSource>.value(
-            value:
-                serverUrl.isEmpty ? DemoGameSource() : ApiGameSource(client)),
+        ...serverUrl.isEmpty ? _demo() : _server(client),
       ],
       child: const HandballApp(),
     ),
   );
+}
+
+/// Teams and games from the server (Bauplan step 6 and 7).
+List<Provider> _server(ApiClient client) => [
+      Provider<GameSource>.value(value: ApiGameSource(client)),
+      Provider<TeamSource>.value(value: ApiTeamSource(client)),
+    ];
+
+/// TV Mettmann from memory, team link /team/tvm/k7Qp2xVz9LmA4tRb.
+List<Provider> _demo() {
+  final games = DemoGameSource();
+  return [
+    Provider<GameSource>.value(value: games),
+    Provider<TeamSource>.value(value: DemoTeamSource(games)),
+  ];
 }
 
 class HandballApp extends StatefulWidget {

@@ -17,13 +17,15 @@ class DemoGameSource implements GameSource {
   }
 
   static const gameId = '17';
-  static const teamCode = 'k7Qp2xVz9LmA4tRb';
   static const tickerCode = 'x9Fw3cNs7Ke2Hy5D';
 
   /// Game 18 has not started yet: the ticker sets up the lineup (E5.1).
   static const nextGameId = '18';
   static const nextTickerCode = 'Pq4Lm8Rt2Wx6Zc1V';
-  static const _tickerCodes = {gameId: tickerCode, nextGameId: nextTickerCode};
+  final Map<String, String> _tickerCodes = {
+    gameId: tickerCode,
+    nextGameId: nextTickerCode,
+  };
 
   static const mettmann = demoMettmann;
   static const hilden = demoHilden;
@@ -55,9 +57,36 @@ class DemoGameSource implements GameSource {
   @override
   Future<Game?> loadGame(String id) async => _states[id]?.game;
 
-  @override
-  Future<Team?> loadTeamByCode(String code) async =>
-      code == teamCode ? mettmann : null;
+  /// A game created in the team management (S1), before kick-off.
+  ///
+  /// The first 16 players by number are on the match report (S1.4).
+  void addGame(String id, String tickerCode, Team home, Team away,
+      {int halfMinutes = 30}) {
+    List<String> report(Team team) => [
+          for (final p in [
+            ...team.players
+          ]..sort((a, b) => a.number.compareTo(b.number)))
+            p.id
+        ].take(16).toList();
+    final reports = {Side.home: report(home), Side.away: report(away)};
+    _tickerCodes[id] = tickerCode;
+    _states[id] = GameState(
+      game: Game(id: id, home: home, away: away, halfMinutes: halfMinutes),
+      goals: const {Side.home: 0, Side.away: 0},
+      clockSeconds: 0,
+      clockRunning: false,
+      phase: GamePhase.notStarted,
+      timeouts: const {Side.home: 0, Side.away: 0},
+      field: {for (final side in Side.values) side: List.filled(7, null)},
+      bench: reports,
+      goalkeepers: const {Side.home: null, Side.away: null},
+      matchReport: reports,
+    );
+  }
+
+  /// The state of game [id] right now, e.g. for the status in the team
+  /// management; null if there is no such game.
+  GameState? stateOf(String id) => _states.containsKey(id) ? _now(id) : null;
 
   @override
   Future<bool> isTickerCode(String id, String code) async =>

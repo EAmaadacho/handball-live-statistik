@@ -70,6 +70,22 @@ class RunningServer {
           {Object? body, String? code, String? tickerCode}) =>
       _send('PUT', path, body: body, code: code, tickerCode: tickerCode);
 
+  /// PUT with raw bytes as body, e.g. a PNG logo for PUT /teams/{id}/logo.
+  Future<Answer> putBytes(String path, List<int> bytes, {String? code}) async {
+    final request = http.Request('PUT', Uri.parse('$_host$path'))
+      ..bodyBytes = bytes;
+    if (code != null) request.headers['X-Team-Code'] = code;
+    final response = await http.Response.fromStream(await request.send());
+    return (
+      response.statusCode,
+      jsonDecode(response.body) as Map<String, dynamic>
+    );
+  }
+
+  /// GET for answers that are not JSON, e.g. the logo image.
+  Future<http.Response> getRaw(String path) =>
+      http.get(Uri.parse('$_host$path'));
+
   Future<Answer> delete(String path, {String? code, String? tickerCode}) =>
       _send('DELETE', path, code: code, tickerCode: tickerCode);
 

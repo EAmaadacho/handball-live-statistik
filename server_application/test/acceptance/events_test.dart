@@ -1,5 +1,5 @@
 // Acceptance tests for events, substitutions and the handball rules
-// (E1–E5, R1–R7, U2.1, U3.1, L1, L3), see docs/user-stories.md.
+// (E1–E5, R1–R7, U2.1, U3.1, U5, L1–L3), see docs/user-stories.md.
 //
 // Most tests stop the clock right after kick-off and set the game time by
 // hand (U2), so they need no waiting: events then get the set time.
@@ -451,6 +451,125 @@ void main() {
       expect(
           (game['runningPenalties'] as List).single['remainingSeconds'], 120);
       expect(game['homeLineup']['fieldPlayerIds'], hasLength(5));
+    });
+  });
+
+  group('L2 statistics per player', () {
+    /// The statistics row of a player, e.g. `row(game, 'home', 'Max')`.
+    Future<Map<String, dynamic>> row(Match match, Map<String, dynamic> game,
+        String side, String name) async {
+      final id = await match.idOf(side, name);
+      return (game['${side}Statistics'] as List)
+          .singleWhere((r) => r['playerId'] == id) as Map<String, dynamic>;
+    }
+
+    test('L2_1 Max scores 4 of 5 seven-meters: seven-meter quota 80 %',
+        () async {
+      final match = await aStoppedGame();
+      for (var i = 0; i < 4; i++) {
+        await match.event('sevenMeterGoal', 'home', 'Max');
+      }
+      final (_, game) = await match.event('sevenMeterMiss', 'home', 'Max');
+
+      final max = await row(match, game, 'home', 'Max');
+
+      expect(max['sevenMeterGoals'], 4);
+      expect(max['sevenMeters'], 5);
+      expect(max['sevenMeterPercentage'], 80);
+    });
+
+    test('L2_2 Nora saves 12 of 30 shots: 12 saves, 18 goals, 40 %', () async {
+      final match = await aStoppedGame();
+      for (var i = 0; i < 12; i++) {
+        await match.event('save', 'away', 'Nr2');
+      }
+      for (var i = 0; i < 17; i++) {
+        await match.event('goal', 'away', 'Nr3');
+      }
+      final (_, game) = await match.event('goal', 'away', 'Nr3');
+
+      final nora = await row(match, game, 'home', 'Nora');
+
+      expect(nora['saves'], 12);
+      expect(nora['goalsAgainst'], 18);
+      expect(nora['savePercentage'], 40);
+    });
+
+    test(
+        'L2 Lisa: goals, shots, shooting quota, technical faults and '
+        'penalties', () async {
+      final match = await aStoppedGame();
+      await match.event('goal', 'home', 'Lisa');
+      await match.event('goal', 'home', 'Lisa');
+      await match.event('goal', 'home', 'Lisa');
+      await match.event('miss', 'home', 'Lisa');
+      await match.event('technicalFault', 'home', 'Lisa');
+      await match.event('yellowCard', 'home', 'Lisa');
+      final (_, game) = await match.event('twoMinutes', 'home', 'Lisa');
+
+      final lisa = await row(match, game, 'home', 'Lisa');
+
+      expect(lisa['goals'], 3);
+      expect(lisa['shots'], 4);
+      expect(lisa['shootingPercentage'], 75);
+      expect(lisa['technicalFaults'], 1);
+      expect(lisa['yellowCards'], 1);
+      expect(lisa['twoMinutes'], 1);
+    });
+
+    test('L2 without a seven-meter Max has no seven-meter quota', () async {
+      final match = await aStoppedGame();
+
+      final (_, game) = await match.event('goal', 'home', 'Max');
+
+      final max = await row(match, game, 'home', 'Max');
+      expect(max['sevenMeters'], 0);
+      expect(max['sevenMeterPercentage'], isNull);
+    });
+  });
+
+  group('U5 half-time score and archive', () {
+    test('U5_1 "Halbzeit" at 2:1 keeps 2:1 as half-time score', () async {
+      final match = await aStoppedGame();
+      await match.event('goal', 'home', 'Max');
+      await match.event('goal', 'home', 'Lisa');
+      await match.event('goal', 'away', 'Nr2');
+
+      await match.clock('half-time');
+      await match.clock('start');
+      final (_, game) = await match.event('goal', 'away', 'Nr3');
+
+      expect(game['halfTimeScore'], {'home': 2, 'away': 1});
+      expect(game['score'], {'home': 2, 'away': 2});
+    });
+
+    test(
+        'U5_2 after "Spielende" and a restart Lisa still sees score, '
+        'events and statistics', () async {
+      final match = await aStoppedGame();
+      await match.event('goal', 'home', 'Max');
+      await match.event('goal', 'away', 'Nr2');
+      await match.clock('half-time');
+      await match.clock('start');
+      await match.event('goal', 'home', 'Max');
+      await match.clock('stop');
+      final (endStatus, _) = await match.clock('end');
+
+      await server().stop();
+      final restarted = await RunningServer.start(dataDir: server().dataDir);
+      final (status, game) = await restarted.get('/games/${match.gameId}');
+      await restarted.stop();
+
+      expect(endStatus, 200);
+      expect(status, 200);
+      expect(game['status'], 'finished');
+      expect(game['score'], {'home': 2, 'away': 1});
+      expect(game['halfTimeScore'], {'home': 1, 'away': 1});
+      expect(game['events'], hasLength(3));
+      final maxId = game['events'].first['playerId'];
+      final max = (game['homeStatistics'] as List)
+          .singleWhere((r) => r['playerId'] == maxId);
+      expect(max['goals'], 2);
     });
   });
 }

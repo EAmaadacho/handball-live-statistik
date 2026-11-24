@@ -45,9 +45,11 @@ List<String> requiredIds(String userStories) {
 
 /// Finds the IDs at the start of test names, e.g. "E2_1" in
 /// `test('E2_1 deleting Max's goal at 12:11 shows 11:11', ...)`.
-Set<String> testedIds(Iterable<String> testSources) {
-  final testName =
-      RegExp(r'''(?:test|testWidgets)\(\s*['"]([A-Z]\d+(?:_\d+)?) ''');
+/// With [onlyWidgetTests] only `testWidgets(...)` counts.
+Set<String> testedIds(Iterable<String> testSources,
+    {bool onlyWidgetTests = false}) {
+  final kind = onlyWidgetTests ? 'testWidgets' : '(?:test|testWidgets)';
+  final testName = RegExp(kind + r'''\(\s*['"]([A-Z]\d+(?:_\d+)?) ''');
   return {
     for (final source in testSources)
       for (final match in testName.allMatches(source)) match.group(1)!,
@@ -63,7 +65,9 @@ Iterable<File> testFiles(List<String> folders) sync* {
   }
 }
 
-/// Acceptance tests live in a folder "acceptance", all others are unit tests.
+/// Acceptance tests live in a folder "acceptance". Widget tests of the app
+/// count as acceptance tests too, because they open a page and check what
+/// the user sees (e.g. E1.4). All other tests are unit tests.
 bool isAcceptanceTest(File file) =>
     file.uri.pathSegments.contains('acceptance');
 
@@ -71,9 +75,15 @@ void main() {
   final required =
       requiredIds(File('../docs/user-stories.md').readAsStringSync());
   final files = testFiles(['test', '../flutter_application/test']).toList();
-  final acceptance = testedIds([
-    for (final file in files.where(isAcceptanceTest)) file.readAsStringSync(),
-  ]);
+  final acceptance = {
+    ...testedIds([
+      for (final file in files.where(isAcceptanceTest)) file.readAsStringSync(),
+    ]),
+    ...testedIds([
+      for (final file in files.where((file) => !isAcceptanceTest(file)))
+        file.readAsStringSync(),
+    ], onlyWidgetTests: true),
+  };
   final unit = testedIds([
     for (final file in files.where((file) => !isAcceptanceTest(file)))
       file.readAsStringSync(),

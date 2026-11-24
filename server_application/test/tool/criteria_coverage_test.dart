@@ -51,5 +51,16 @@ test('root answers with the server name', () {});
 
       expect(ids, {'X1_1', 'X2_1'});
     });
+
+    test('with onlyWidgetTests finds only widget test names', () {
+      const source = '''
+test('X1_1 deleting Max's goal at 12:11 shows 11:11', () {});
+testWidgets("X2_1 shows players as '7 Max Mustermann'", (tester) async {});
+''';
+
+      final ids = testedIds([source], onlyWidgetTests: true);
+
+      expect(ids, {'X2_1'});
+    });
   });
 }

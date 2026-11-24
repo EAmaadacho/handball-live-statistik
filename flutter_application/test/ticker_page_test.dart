@@ -210,6 +210,21 @@ void main() {
     expect(_message(tester), '7 Max geht ins Tor und zählt jetzt als Torwart.');
   });
 
+  testWidgets(
+      'E1_4 the goal of Max stands as "7 Max Mustermann" in the history',
+      (tester) async {
+    await _openTicker(tester, size: const Size(1280, 800));
+    final maxGoals = find.descendant(
+        of: _key('TickerHistory'),
+        matching: find.text('Tor · 7 Max Mustermann'));
+    final before = maxGoals.evaluate().length;
+
+    await _tap(tester, _key('Court-home-2')); // Max on RL
+    await _tap(tester, _key('Action-Tor'));
+
+    expect(maxGoals.evaluate().length, before + 1);
+  });
+
   testWidgets('web shows the history next to the court', (tester) async {
     await _openTicker(tester, size: const Size(1280, 800));
     expect(_key('TickerHistory'), findsOneWidget);

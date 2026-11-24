@@ -844,6 +844,53 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Player'
+    PlayerStatistics:
+      description: >-
+        Counted from the events (L2), e.g. Max with 4 of 5 seven-metre
+        throws has sevenMeterPercentage 80. A percentage is missing without
+        any attempt.
+      type: object
+      required:
+        - playerId
+        - goals
+        - shots
+        - sevenMeterGoals
+        - sevenMeters
+        - technicalFaults
+        - yellowCards
+        - twoMinutes
+        - redCards
+        - saves
+        - goalsAgainst
+      properties:
+        playerId:
+          type: string
+        goals:
+          type: integer
+        shots:
+          type: integer
+        shootingPercentage:
+          type: integer
+        sevenMeterGoals:
+          type: integer
+        sevenMeters:
+          type: integer
+        sevenMeterPercentage:
+          type: integer
+        technicalFaults:
+          type: integer
+        yellowCards:
+          type: integer
+        twoMinutes:
+          type: integer
+        redCards:
+          type: integer
+        saves:
+          type: integer
+        goalsAgainst:
+          type: integer
+        savePercentage:
+          type: integer
     Game:
       type: object
       required:
@@ -860,6 +907,8 @@ components:
         - halfTimeScore
         - events
         - runningPenalties
+        - homeStatistics
+        - awayStatistics
       properties:
         id:
           type: string
@@ -899,6 +948,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RunningPenalty'
+        homeStatistics:
+          description: One row per player in the match report (L2)
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerStatistics'
+        awayStatistics:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerStatistics'
     GameWithCode:
       description: A game with the secret ticker code, only for the team manager (S1.2, S1.3)
       type: object

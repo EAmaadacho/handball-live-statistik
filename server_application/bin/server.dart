@@ -10,6 +10,7 @@ import 'package:server_application/api/game_access.dart';
 import 'package:server_application/api/game_api.dart';
 import 'package:server_application/api/team_api.dart';
 import 'package:server_application/api/ticker_api.dart';
+import 'package:server_application/storage/game_archive.dart';
 import 'package:server_application/storage/game_repository.dart';
 import 'package:server_application/storage/team_repository.dart';
 
@@ -43,7 +44,9 @@ void main(List<String> args) async {
   final port = int.parse(Platform.environment[EnvVariables.port] ?? '8080');
   final dataDir = Platform.environment[EnvVariables.dataDir] ?? 'data';
   final teams = TeamRepository.open('$dataDir/teams.json');
-  final games = GameAccess(GameRepository.open('$dataDir/games'));
+  Directory(dataDir).createSync(recursive: true);
+  final games = GameAccess(GameRepository.open('$dataDir/games',
+      archive: GameArchive.open('$dataDir/archive.db')));
 
   // The first router that knows the path answers; the others give 404.
   final routes = Cascade()

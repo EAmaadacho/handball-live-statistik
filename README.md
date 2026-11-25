@@ -12,18 +12,9 @@ Mein persönliches Ziel war, ein Projekt strukturiert in Phasen umzusetzen: erst
 
 ## Vorgehen
 
-Das Projekt lief bewusst in Phasen mit Feedbackschleifen. Erst wenn eine Phase klar war, ging es an die nächste.
-
-1. **Einrichtung:** Repository aus der Kursvorlage, CI in GitHub Actions.
-2. **Anforderungen:** User Stories mit Akzeptanzkriterien, aufgeteilt in Muss und Kann.
-3. **Architektur:** sechs Entscheidungen als ADRs, jeweils mit verworfenen Alternativen.
-4. **Prototyp:** Entwurf der Oberfläche als klickbarer Prototyp, bevor die Flutter-Seiten entstanden.
-5. **Umsetzung Story für Story:** Pseudocode für die Fachlogik, danach Dart-Code mit Unit-Tests, dann REST-API und Oberfläche, zuletzt Akzeptanztests.
-6. **Dokumentation:** README, AI Engineering Journal und Referat.
+Das Projekt lief bewusst in Phasen mit Feedbackschleifen: Einrichtung, User Stories, Architekturentscheidungen (ADRs), ein klickbarer Prototyp der Oberfläche, danach die Umsetzung Story für Story und zuletzt die Dokumentation. Erst wenn eine Phase klar war, ging es an die nächste.
 
 ## Handball in Kürze
-
-Für das Verständnis der Anforderungen reichen wenige Begriffe:
 
 - Ein Spiel dauert 2 × 30 Minuten, pro Team stehen 6 Feldspieler und 1 Torwart auf dem Feld.
 - **Parade:** Der Torwart hält einen Wurf.
@@ -33,7 +24,7 @@ Für das Verständnis der Anforderungen reichen wenige Begriffe:
 
 ## Anforderungen
 
-Die Anforderungen stehen als User Stories mit Akzeptanzkriterien in [docs/user-stories.md](docs/user-stories.md). Jede Story hat eine Kennung, jedes Kriterium eine Unterkennung (z. B. `E1.2`). Sie sind in **Muss** (Kern der App) und **Kann** (Erweiterungen) geteilt.
+Die Anforderungen stehen als User Stories mit Akzeptanzkriterien (z. B. `E1.2`) in [docs/user-stories.md](docs/user-stories.md). Sie sind in **Muss** (Kern der App) und **Kann** (Erweiterungen) geteilt.
 
 | Block | Inhalt |
 |---|---|
@@ -42,7 +33,7 @@ Die Anforderungen stehen als User Stories mit Akzeptanzkriterien in [docs/user-s
 | E – Ereignisse erfassen | Tor, Parade, Fehlwurf, Strafen, Auszeit, Wechsel; jedes Ereignis gehört zu einem Spieler |
 | U – Spieluhr | Start, Stopp, Korrektur, Halbzeit, Spielende wie an einer Hallenuhr |
 | L – Live ansehen | Spielstand, Uhr, Verlauf und Spielerstatistik ohne Neuladen |
-| R – Handballregeln | z. B. höchstens drei Auszeiten (R1), Rote Karte nach der dritten Zeitstrafe (R3) |
+| R – Handballregeln | z. B. höchstens drei Auszeiten (R1), Rote Karte nach der dritten Zeitstrafe (R2) |
 
 Es gibt bewusst keinen Login: Wer den passenden geheimen Link hat, darf die zugehörige Aktion ausführen ([ADR-005](docs/adr/005-geheime-links-statt-login.md)).
 
@@ -54,7 +45,6 @@ Es gibt bewusst keinen Login: Wer den passenden geheimen Link hat, darf die zuge
 | Server | Dart mit shelf und shelf_router |
 | Schnittstelle | REST, beschrieben in [api.yaml](api.yaml) (OpenAPI 3); Client- und Server-Modelle erzeugt der OpenAPI Generator |
 | Speicherung | JSON-Dateien für Teams und laufende Spiele (`data/teams.json`, `data/games/<id>.json`), beendete Spiele in SQLite (`data/archive.db`), Vereinslogos als Dateien (`data/logos/`) ([ADR-004](docs/adr/004-json-dateien-und-sqlite-archiv.md)) |
-| Tests | package:test (Server), flutter_test und mockito (Client) |
 | CI/CD | GitHub Actions, Demo auf GitHub Pages |
 
 Grundlage ist die Kursvorlage des Moduls ([ADR-001](docs/adr/001-kursvorlage-als-basis.md)). Der ChatGPT-Teil der Vorlage ist entfernt, die App nutzt keine KI.
@@ -83,7 +73,6 @@ Die Architekturentscheidungen stehen als ADRs in [docs/adr/](docs/adr/):
 
 **Ereignisse statt Zähler.** Gespeichert wird nur die Liste der Ereignisse. Spielstand, Aufstellung, Zeitstrafen und Statistik werden daraus berechnet. Löscht der Ticker ein falsch erfasstes Tor, stimmen Stand und Statistik dadurch sofort wieder.
 
-**Uhr auf dem Server.** Gespeichert werden nur „läuft“, „gestartet um“ und „vorher gelaufen“. Die Spielzeit wird bei jeder Anfrage berechnet, so zeigen alle Browser dieselbe Zeit, auch nach einem Neustart des Servers.
 
 ## Qualitätssicherung
 
@@ -91,14 +80,12 @@ Die Fachlogik entstand zuerst als Pseudocode. So war die Hürde, den Code zu ver
 
 | Maßnahme | Umsetzung |
 |---|---|
-| Unit-Tests | `server_application/test/domain/`, je Regel und Kriterium, mit Test-Buildern und fester Uhr |
-| API- und Speichertests | `test/api/`, `test/storage/` |
-| Akzeptanztests | `test/acceptance/` starten den echten Server als eigenen Prozess und sprechen nur über HTTP mit ihm; geschrieben nach jeder Story, eng am Beispiel im Kriterium |
+| Unit-Tests | `server_application/test/domain/`, `api/`, `storage/`: je Regel und Kriterium, mit Test-Buildern und fester Uhr |
+| Akzeptanztests | `test/acceptance/` starten den echten Server und sprechen nur über HTTP mit ihm; geschrieben nach jeder Story, eng am Beispiel im Kriterium |
 | Widget-Tests | `flutter_application/test/` |
-| Statische Analyse | `dart analyze --fatal-infos` (Server), `flutter analyze` (Client) |
-| CI | GitHub Actions bei jedem Push: Code erzeugen, analysieren, alle Tests |
-| Kriterienzähler | `server_application/tool/criteria_coverage.dart` meldet in der CI, welche Muss-Kriterien noch keinen Akzeptanztest haben (Stand 25.11.2026: alle 48 haben einen) |
-| Continuous Deployment | Bei jedem Push auf `main` baut GitHub Actions die App im Demo-Modus und stellt sie auf GitHub Pages bereit |
+| Statische Analyse und CI | `dart analyze --fatal-infos` und `flutter analyze`, mit allen Tests bei jedem Push in GitHub Actions |
+| Kriterienzähler | `server_application/tool/criteria_coverage.dart` meldet in der CI Muss-Kriterien ohne Akzeptanztest (Stand 25.11.2026: keins) |
+| Continuous Deployment | Jeder Push auf `main` stellt die App im Demo-Modus auf GitHub Pages bereit |
 
 Tests tragen die Kennung des Kriteriums im Namen und folgen dem Aufbau Vorbereiten / Ausführen / Prüfen, z. B.:
 
@@ -151,18 +138,14 @@ Tests ausführen: `dart test` in `server_application`, `flutter test` in `flutte
 | Ordner | Inhalt |
 |---|---|
 | `api.yaml` | REST-Schnittstelle (OpenAPI) |
-| `server_application/lib/domain/` | Fachlogik und Handballregeln |
-| `server_application/lib/api/` | HTTP-Handler |
-| `server_application/lib/storage/` | Speicherung in JSON-Dateien, SQLite-Archiv und Logo-Dateien |
-| `server_application/test/` | Unit-, API-, Speicher- und Akzeptanztests |
-| `server_application/tool/` | Kriterienzähler für die CI |
-| `flutter_application/` | Client: Ticker- und Live-Seite |
+| `server_application/` | Server: `lib/domain/` Fachlogik, `lib/api/` Handler, `lib/storage/` Speicherung, `test/`, `tool/` |
+| `flutter_application/` | Client: Ticker- und Live-Seite, Team- und Spielverwaltung |
 | `docs/` | User Stories, ADRs, AI Engineering Journal |
 | `generate_code.sh` / `.bat` | Code aus `api.yaml` erzeugen |
-| `.github/workflows/` | CI (`ci.yml`) und Demo auf GitHub Pages (`pages.yml`) |
+| `.github/workflows/` | CI und Demo auf GitHub Pages |
 
 ## Stand und Ausblick
 
 Alle Muss-Stories sind umgesetzt, jedes der 48 Muss-Kriterien hat einen Akzeptanztest (Stand 25.11.2026). Die Kann-Stories in [docs/user-stories.md](docs/user-stories.md) waren nur vorgesehen, wenn Zeit bleibt. Login mit Passwort (T3) und eine Saisonstatistik über alle Spiele (T5) gehören zum Beispiel nicht zum aktuellen Stand.
 
-> **[PLATZHALTER Elias: Was würdest du als Nächstes bauen, wenn das Projekt weiterginge, und warum? 2–4 Sätze.]**
+Als Nächstes würde ich die App auf eine Liga ausrichten: mit Login und mit Saisons.

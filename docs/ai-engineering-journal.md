@@ -1,8 +1,8 @@
 # AI Engineering Journal
 
-Dieses Journal beschreibt, wofür ich bei der Entwicklung der Handball-Live-Statistik KI eingesetzt habe. Die App selbst nutzt keine KI. Eingesetzt habe ich durchgehend Claude Opus 5.5 (Anthropic), zuerst in Claude Cowork, danach in einem Claude-Projekt mit Zugriff auf das GitHub-Repository.
+Dieses Journal beschreibt, wofür ich bei der Entwicklung der Handball-Live-Statistik KI eingesetzt habe. Die App selbst nutzt keine KI. Eingesetzt habe ich durchgehend Claude Opus 5.5 (Anthropic).
 
-Für alle Phasen galt dieselbe Arbeitsweise: Die KI erklärt das Thema am Projektbeispiel und schlägt Optionen vor, ich entscheide, erst danach entsteht Text oder Code. Jede Änderung kam erst nach meinem OK ins Repository.
+Für alle Phasen galt dieselbe Arbeitsweise: Die KI erklärt das Thema und schlägt Optionen vor, ich entscheide, erst danach entsteht Text oder Code. Jede Änderung kam erst nach meinem OK ins Repository.
 
 ## Überblick
 
@@ -12,17 +12,16 @@ Für alle Phasen galt dieselbe Arbeitsweise: Die KI erklärt das Thema am Projek
 | Einrichtung | Installationsplan für Flutter, Java, Git und VS Code ohne Administratorrechte, Repository aus der Kursvorlage, CI |
 | Anforderungen | User Stories mit Akzeptanzkriterien über Auswahlkarten schärfen, Lücken suchen, Handballregeln prüfen |
 | Architektur | Grundlagen erklären (Polling, Zustandslosigkeit, Speicherung), Optionen vergleichen, ADRs formulieren |
-| Implementierung | Pseudocode für die Fachlogik schreiben, nach meiner Prüfung Dart-Code für Fachlogik, REST-API und Oberfläche |
-| Tests | Unit- und Akzeptanztests, Kriterienzähler für die CI |
+| Implementierung und Tests | Pseudocode für die Fachlogik, nach meiner Prüfung Dart-Code für Fachlogik, REST-API und Oberfläche, Unit- und Akzeptanztests |
 | Dokumentation | README, dieses Journal und Referat gemeinsam ausformulieren; die Inhalte stammen von mir |
 
 ## Beispiel 1 – User Stories schärfen
 
 **Kontext.** Phase Anforderungen, 17.11.2026. Im Projektsteckbrief stand nur ein grober Entwurf für einen Live-Ticker. Als Handballer kenne ich den Liveticker von nuLiga, dem Portal, über das die Handballverbände Spielpläne und Ergebnisse veröffentlichen. Ich wusste also, wie man so etwas aufbaut, und wollte ihn erweitern, weil er zu rudimentär und nicht aufschlussreich ist.
 
-**Interaktion.** Ich wollte die User Stories gemeinsam mit der KI schärfen, über Auswahlkarten mit zwei bis vier Optionen und eigenen Ideen. Eigene Ideen waren zum Beispiel, Teams und Kader vorab zu speichern, statt sie vor jedem Spiel einzutippen. Am Ende prüfte ein unabhängiger Review-Durchgang Regeln, Umfang und andere Ticker.
+**Interaktion.** Ich wollte die User Stories gemeinsam mit der KI schärfen, über Auswahlkarten mit zwei bis vier Optionen und eigenen Ideen. Eigene Ideen waren zum Beispiel, Teams und Kader vorab zu speichern, statt sie vor jedem Spiel einzutippen. Ein unabhängiger Review-Durchgang prüfte am Ende Regeln und Umfang.
 
-**Reflexion.** An den Auswahlkarten konnte ich erkennen, ob die KI das Zielbild erkennt. Falsch war: Die KI schlug „höchstens 3 Gelbe Karten pro Team“ als harte Grenze vor, laut Regelkommentar ist das nur eine Empfehlung. Die Regel „drei Auszeiten pro Spiel“ gab sie als internationale Regel aus, sie stammt aber von den deutschen Verbänden. Außerdem plante sie doppelte Ereignisse wie „Gegentor“ und „Tor des Gegners“. Der Umfang wuchs auf etwa das Doppelte; wir haben ihn danach in Muss und Kann geteilt. Daraus habe ich gelernt: Im Vorfeld hat man nicht direkt das fertige Produkt, man muss flexibel bleiben, weil beim Entwickeln neue Dinge dazukommen.
+**Reflexion.** An den Auswahlkarten konnte ich erkennen, ob die KI das Zielbild erkennt. Falsch war: Die KI schlug „höchstens 3 Gelbe Karten pro Team“ als harte Grenze vor, laut Regelkommentar ist das nur eine Empfehlung. Die Regel „drei Auszeiten pro Spiel“ gab sie als internationale Regel aus, sie stammt aber von den deutschen Verbänden. Außerdem plante sie doppelte Ereignisse wie „Gegentor“ und „Tor des Gegners“. Der Umfang wuchs auf etwa das Doppelte und wurde danach in Muss und Kann geteilt. Daraus habe ich gelernt: Im Vorfeld hat man nicht direkt das fertige Produkt, man muss flexibel bleiben, weil beim Entwickeln neue Dinge dazukommen.
 
 ## Beispiel 2 – Feldspieler ins Tor
 
@@ -30,11 +29,11 @@ Für alle Phasen galt dieselbe Arbeitsweise: Die KI erklärt das Thema am Projek
 
 **Interaktion.** Ich bat die KI, die Handballregel zu prüfen und zu zeigen, wie wir es lösen. Sie bestätigte die Regel und legte Pseudocode für eine neue Aktion „Ins Tor“ vor. Nach meinem OK entstanden der Code, 13 Tests und ein neues Akzeptanzkriterium (E5.7).
 
-**Reflexion.** Ich sehe das nicht als Fehler der KI, sondern als etwas, das nicht im Scope war: Die KI hat nicht alle Eventualitäten eines Handballspiels im Kontext. Solche Fälle findet, wer den Sport kennt. Geprüft habe ich das Ergebnis über die Tests in der CI und den Kriterienzähler, der E5.7 als getestet meldet.
+**Reflexion.** Ich sehe das nicht als Fehler der KI, sondern als etwas, das nicht im Scope war: Die KI hat nicht alle Eventualitäten eines Handballspiels im Kontext. Solche Fälle findet, wer den Sport kennt. Geprüft habe ich das Ergebnis über die Tests in der CI.
 
 ## Beispiel 3 – Max bekommt dreimal 2 Minuten
 
-**Kontext.** Phase Tests, 22. und 23.11.2026. Für die Regel „nach der dritten Zeitstrafe disqualifiziert“ (R2) schrieb die KI Tests, in denen Max dreimal hintereinander 2 Minuten bekam und dabei auf dem Feld blieb. Im echten Spiel geht das nicht: Wer 2 Minuten hat, sitzt draußen. Die Tests waren trotzdem grün, weil eine Zeitstrafe den Spieler damals noch nicht vom Feld nahm.
+**Kontext.** Phase Tests, 22. und 23.11.2026. Für die Regel „nach der dritten Zeitstrafe disqualifiziert“ (R2) schrieb die KI Tests, in denen Max dreimal hintereinander 2 Minuten bekam und dabei auf dem Feld blieb. Im echten Spiel geht das nicht: Wer 2 Minuten hat, sitzt draußen. Die Tests waren grün, weil eine Zeitstrafe den Spieler damals noch nicht vom Feld nahm.
 
 **Interaktion.** Im nächsten Schritt bestätigte ich den Pseudocode „Zeitstrafe nimmt den Spieler vom Feld“. Danach schlugen die alten Tests fehl, zu Recht, denn die Testdaten waren falsch. Die KI passte sie an: Max sitzt seine Strafe ab und wird wieder eingewechselt, bevor er die nächste bekommt.
 

@@ -45,7 +45,7 @@ Es gibt bewusst keinen Login: Wer den passenden geheimen Link hat, darf die zuge
 | Server | Dart mit shelf und shelf_router |
 | Schnittstelle | REST, beschrieben in [api.yaml](api.yaml) (OpenAPI 3); Client- und Server-Modelle erzeugt der OpenAPI Generator |
 | Speicherung | JSON-Dateien für Teams und laufende Spiele (`data/teams.json`, `data/games/<id>.json`), beendete Spiele in SQLite (`data/archive.db`), Vereinslogos als Dateien (`data/logos/`) ([ADR-004](docs/adr/004-json-dateien-und-sqlite-archiv.md)) |
-| CI/CD | GitHub Actions, Demo auf GitHub Pages |
+| CI | GitHub Actions |
 
 Grundlage ist die Kursvorlage des Moduls ([ADR-001](docs/adr/001-kursvorlage-als-basis.md)). Der ChatGPT-Teil der Vorlage ist entfernt, die App nutzt keine KI.
 
@@ -85,7 +85,6 @@ Die Fachlogik entstand zuerst als Pseudocode. So war die Hürde, den Code zu ver
 | Widget-Tests | `flutter_application/test/` |
 | Statische Analyse und CI | `dart analyze --fatal-infos` und `flutter analyze`, mit allen Tests bei jedem Push in GitHub Actions |
 | Kriterienzähler | `server_application/tool/criteria_coverage.dart` meldet in der CI Muss-Kriterien ohne Akzeptanztest (Stand 25.11.2026: keins) |
-| Continuous Deployment | Jeder Push auf `main` stellt die App im Demo-Modus auf GitHub Pages bereit |
 
 Tests tragen die Kennung des Kriteriums im Namen und folgen dem Aufbau Vorbereiten / Ausführen / Prüfen, z. B.:
 
@@ -95,7 +94,7 @@ test('R1_2 rejects a third timeout in the first half', () { ... });
 
 ## Lokal starten
 
-Voraussetzungen: Flutter 3.50 (enthält Dart), Java 17 oder neuer (nur für den Code-Generator), Git.
+Voraussetzungen: Flutter 3.50 (enthält Dart), Java 17 oder neuer (nur für den Code-Generator), Git, Chrome. Das Skript `generate_code` lädt beim ersten Mal den Code-Generator herunter (ca. 30 MB).
 
 ### Windows (PowerShell)
 
@@ -129,7 +128,7 @@ cd flutter_application
 flutter run -d chrome --dart-define=SERVER_URL=http://127.0.0.1:8080
 ```
 
-Der Server läuft auf Port 8080 und meldet unter http://localhost:8080/health `{"status":"ok"}`. Der Client öffnet sich in Chrome und spricht mit diesem Server. Ohne `--dart-define=SERVER_URL=…` startet er im Demo-Modus mit Beispieldaten, so läuft auch die Demo auf GitHub Pages: https://eamaadacho.github.io/handball-live-statistik/. Daten liegen in `server_application/data/` und sind nicht im Repository.
+Der Server läuft auf Port 8080 und meldet unter http://localhost:8080/health `{"status":"ok"}`. Der Client öffnet sich in Chrome und spricht mit diesem Server. Ohne `--dart-define=SERVER_URL=…` startet er im Demo-Modus mit Beispieldaten. Daten liegen in `server_application/data/` und sind nicht im Repository.
 
 Tests ausführen: `dart test` in `server_application`, `flutter test` in `flutter_application`.
 
@@ -142,7 +141,7 @@ Tests ausführen: `dart test` in `server_application`, `flutter test` in `flutte
 | `flutter_application/` | Client: Ticker- und Live-Seite, Team- und Spielverwaltung |
 | `docs/` | User Stories, ADRs, AI Engineering Journal |
 | `generate_code.sh` / `.bat` | Code aus `api.yaml` erzeugen |
-| `.github/workflows/` | CI und Demo auf GitHub Pages |
+| `.github/workflows/` | CI |
 
 ## Stand und Ausblick
 

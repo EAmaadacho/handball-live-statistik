@@ -74,6 +74,18 @@ void main() {
       expect(find.byKey(const Key('TeamLogo')), findsNothing);
     });
 
+    testWidgets('T6_2 the unregistered opponent HSG Hilden shows "HSG"',
+        (tester) async {
+      await _show(
+          tester, const SizedBox(width: 300, child: Court(state: _state)));
+
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('CourtBadge-away')),
+              matching: find.text('HSG')),
+          findsOneWidget);
+    });
+
     testWidgets('empty place shows its short name', (tester) async {
       await _show(
           tester, const SizedBox(width: 300, child: Court(state: _state)));

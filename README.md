@@ -132,6 +132,8 @@ Der Server läuft auf Port 8080 und meldet unter http://localhost:8080/health `{
 
 Tests ausführen: `dart test` in `server_application`, `flutter test` in `flutter_application`.
 
+Beispielspiel zum Ausprobieren: Bei laufendem Server legt `dart run tool/demo_data.dart` (in `server_application`) TV Mettmann und HSG Hilden mit je 8 Spielern an und gibt Team-, Ticker- und Zuschauer-Link aus. Die Links passen, wenn der Client mit `--web-port=5000` gestartet wird.
+
 ## Aufbau des Repositorys
 
 | Ordner | Inhalt |

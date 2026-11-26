@@ -1,5 +1,6 @@
-// Prepares a demo game on a running server: TV Mettmann with 8 players
-// against HSG Hilden with 8 players, then prints the three links.
+// Prepares the live demo on a running server: creates TV Mettmann with
+// 8 players and prints the team link and the link to "Spiel anlegen".
+// With DEMO_PREFILL the client fills in HSG Hilden there (game_create_page).
 // Run from server_application while the server runs:
 //   dart run tool/demo_data.dart
 // Optional: dart run tool/demo_data.dart <server url> <client url>
@@ -21,18 +22,6 @@ const _mettmann = [
   (17, 'Erik', 'Hoffmann', 'fieldPlayer'),
 ];
 
-/// The game squad of HSG Hilden (S1.1), at least 7 for the kick-off.
-const _hilden = [
-  (1, 'Lukas', 'Brandt', 'goalkeeper'),
-  (4, 'Nico', 'Weber', 'fieldPlayer'),
-  (5, 'Jan', 'Becker', 'fieldPlayer'),
-  (6, 'Jonas', 'Fischer', 'fieldPlayer'),
-  (8, 'Felix', 'Schulz', 'fieldPlayer'),
-  (10, 'Moritz', 'Klein', 'fieldPlayer'),
-  (13, 'David', 'Lang', 'fieldPlayer'),
-  (20, 'Ole', 'Brandt', 'fieldPlayer'),
-];
-
 Future<void> main(List<String> args) async {
   final server = args.isNotEmpty ? args[0] : _defaultServer;
   final client = args.length > 1 ? args[1] : _defaultClient;
@@ -50,27 +39,14 @@ Future<void> main(List<String> args) async {
           teamCode: teamCode);
     }
 
-    final game = await _post(
-        http,
-        '$server/teams/$teamId/games',
-        {
-          'opponent': {
-            'name': _name('HSG Hilden'),
-            'shortCode': 'HSG',
-            'players': [for (final player in _hilden) _player(player)],
-          },
-          'date': DateTime.now().toUtc().toIso8601String(),
-        },
-        teamCode: teamCode);
-    final gameId = game['game']['id'] as String;
-    final tickerCode = game['tickerCode'] as String;
-
-    stdout.writeln('Demo-Spiel TV Mettmann gegen HSG Hilden ist angelegt.');
-    stdout.writeln('Team-Link:      $client/team/$teamId/$teamCode');
-    stdout.writeln('Ticker-Link:    $client/spiel/$gameId/ticker/$tickerCode');
-    stdout.writeln('Zuschauer-Link: $client/spiel/$gameId/live');
+    stdout
+        .writeln('TV Mettmann ist mit ${_mettmann.length} Spielern angelegt.');
+    stdout.writeln('Team-Link:          $client/team/$teamId/$teamCode');
+    stdout.writeln(
+        'Spiel-anlegen-Link: $client/team/$teamId/$teamCode/spiel-neu');
   } on SocketException {
-    stderr.writeln('Kein Server unter $server. Läuft dart run bin/server.dart?');
+    stderr
+        .writeln('Kein Server unter $server. Läuft dart run bin/server.dart?');
     exitCode = 1;
   } on HttpException catch (e) {
     stderr.writeln(e.message);

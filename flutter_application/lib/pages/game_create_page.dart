@@ -10,6 +10,23 @@ import '../widgets/link_box.dart';
 import '../widgets/section_heading.dart';
 import '../widgets/team_name_fields.dart';
 
+/// Only for the live demo: started with `--dart-define=DEMO_PREFILL=true`,
+/// the form already holds HSG Hilden with 8 players, so creating the game
+/// is one click. Without it the form starts empty.
+const _demoPrefill = bool.fromEnvironment('DEMO_PREFILL');
+
+/// The game squad of HSG Hilden for the demo, goalkeeper Lukas first.
+const _demoSquad = [
+  (1, 'Lukas', 'Brandt'),
+  (4, 'Nico', 'Weber'),
+  (5, 'Jan', 'Becker'),
+  (6, 'Jonas', 'Fischer'),
+  (8, 'Felix', 'Schulz'),
+  (10, 'Moritz', 'Klein'),
+  (13, 'David', 'Lang'),
+  (20, 'Ole', 'Brandt'),
+];
+
 /// One row of the opponent's game squad while typing (S1.1).
 class _SquadRow {
   final number = TextEditingController();
@@ -72,6 +89,28 @@ class _GameCreatePageState extends State<GameCreatePage> {
   static DateTime _nextFullHour() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day, now.hour + 1);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_demoPrefill) _fillInDemo();
+  }
+
+  /// HSG Hilden Männer (HSG) with [_demoSquad], see [_demoPrefill].
+  void _fillInDemo() {
+    _opponent.club.text = 'HSG Hilden';
+    _opponent.shortName.text = 'HSG';
+    while (_rows.length < _demoSquad.length) {
+      _rows.add(_SquadRow());
+    }
+    for (var i = 0; i < _demoSquad.length; i++) {
+      final (number, firstName, lastName) = _demoSquad[i];
+      _rows[i].number.text = '$number';
+      _rows[i].firstName.text = firstName;
+      _rows[i].lastName.text = lastName;
+      _rows[i].goalkeeper = i == 0;
+    }
   }
 
   @override
